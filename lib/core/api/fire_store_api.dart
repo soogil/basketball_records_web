@@ -130,12 +130,14 @@ class FireStoreApi {
       final playerId = playerInput.playerId;
       final recordRef = fireStore.collection('playerRecords').doc(playerId);
       final playerRef = fireStore.collection('players').doc(playerId);
+      final int attendanceScore = playerInput.attendanceScore;
+      final int winScore = playerInput.winScore;
 
       // 1. RecordModel 생성 (각 선수의 해당 날짜 기록)
       final recordModel = RecordModel(
         date: recordDate,
-        attendanceScore: playerInput.attendanceScore,
-        winScore: playerInput.winScore.toInt(),
+        attendanceScore: attendanceScore,
+        winScore: winScore,
         winningGames: playerInput.winGames.toDouble(),
         totalGames: playerInput.totalGames.toInt(),
       );
@@ -156,15 +158,15 @@ class FireStoreApi {
       // 3. batch로 기록/누적치 갱신 추가
       batch.set(recordRef, {'records': playerRecords});
       batch.update(playerRef, {
-        'totalScore': FieldValue.increment(playerInput.attendanceScore + playerInput.winScore),
-        'attendanceScore': FieldValue.increment(playerInput.attendanceScore),
-        'winScore': FieldValue.increment(playerInput.winScore),
+        'totalScore': FieldValue.increment(attendanceScore + winScore),
+        'attendanceScore': FieldValue.increment(attendanceScore),
+        'winScore': FieldValue.increment(winScore),
         'seasonTotalWins': FieldValue.increment(playerInput.winGames),
         'seasonTotalGames': FieldValue.increment(playerInput.totalGames),
-        'accumulatedScore': FieldValue.increment(playerInput.attendanceScore + playerInput.winScore),
+        'accumulatedScore': FieldValue.increment(attendanceScore + winScore),
         'scoreAchieved': _isMilestonePassed(
             playerInput.player.accumulatedScore,
-            playerInput.player.accumulatedScore + playerInput.attendanceScore + playerInput.winScore),
+            playerInput.player.accumulatedScore + attendanceScore + winScore),
       });
     }
 
