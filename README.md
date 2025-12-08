@@ -33,10 +33,10 @@
 ## 🧱 기술 스택
 
 - **Framework**
-  - Flutter (Web) :contentReference[oaicite:0]{index=0}
+  - Flutter (Web)
 - **State Management**
   - Riverpod
   - riverpod_annotation / riverpod_generator (codegen)
 - **Firebase**
   - Firebase Core
-  - Firestore – 선수 및 경기 기록 저장
+  - Cloud Firestore – 선수 및 경기 기록 저장
