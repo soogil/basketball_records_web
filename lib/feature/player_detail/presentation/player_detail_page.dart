@@ -1,7 +1,7 @@
 import 'package:iggys_point/core/theme/br_color.dart';
-import 'package:iggys_point/data/model/record_model.dart';
-import 'package:iggys_point/presentation/view/main_page.dart';
-import 'package:iggys_point/presentation/viewmodel/date_records_view_model.dart';
+import 'package:iggys_point/feature/record/data/models/record_model.dart';
+import 'package:iggys_point/feature/main/presentation/main_page.dart';
+import 'package:iggys_point/feature/player_detail/presentation/player_detail_record_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
@@ -20,7 +20,7 @@ class PlayerDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recordsState = ref.watch(dateRecordsViewModelProvider(playerId));
+    final recordsState = ref.watch(playerDetailRecordViewModelProvider(playerId));
 
     return Scaffold(
       appBar: _appBar(context, ref),
@@ -63,7 +63,7 @@ class PlayerDetailPage extends ConsumerWidget {
             final bool? confirm = await _showRemovePlayerDialog(context);
 
             if (confirm ?? false) {
-              final recordsState = ref.read(dateRecordsViewModelProvider(playerId).notifier);
+              final recordsState = ref.read(playerDetailRecordViewModelProvider(playerId).notifier);
               await recordsState.removePlayer(playerId);
 
               if (context.mounted) {

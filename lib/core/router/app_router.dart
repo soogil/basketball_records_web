@@ -1,18 +1,17 @@
-import 'package:iggys_point/data/model/player_model.dart';
-import 'package:iggys_point/presentation/view/main_page.dart';
-import 'package:iggys_point/presentation/view/player_detail_page.dart';
+import 'package:iggys_point/core/router/app_pages.dart';
+import 'package:iggys_point/feature/main/data/models/player_model.dart';
+import 'package:iggys_point/feature/main/presentation/main_page.dart';
+import 'package:iggys_point/feature/player_detail/presentation/player_detail_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iggys_point/presentation/view/record_add_page.dart';
+import 'package:iggys_point/feature/record/presentation/record_add_page.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'app_pages.dart';
+part 'app_router.g.dart';
 
 
-// final authProvider = StateProvider<bool>((ref) => false);
-
-final routerProvider = Provider<GoRouter>((ref) {
-  // final isLoggedIn = ref.watch(authProvider);
-
+@riverpod
+GoRouter appRouter(Ref ref) {
   return GoRouter(
     initialLocation: AppPage.main.path,
     routes: [
@@ -39,12 +38,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final Map data = state.extra as Map;
 
-          final List<PlayerModel> playerId = data['allPlayers'];
+          final List<PlayerModel> players = data['allPlayers'];
           final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>) onSave = data['onSave'];
           final Function(DateTime date)? onRemove = data['onRemove'];
 
           return RecordAddPage(
-            allPlayers: playerId,
+            allPlayers: players,
             onSave: onSave,
             onRemove: onRemove,
           );
@@ -52,4 +51,4 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-});
+}

@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // for TextInputFormatter
-import 'package:iggys_point/data/model/player_model.dart';
-import 'package:iggys_point/presentation/view/main_page.dart';
-import 'package:iggys_point/presentation/viewmodel/player_list_view_model.dart';
+import 'package:iggys_point/feature/main/data/models/player_model.dart';
+import 'package:iggys_point/feature/main/presentation/main_page.dart';
+import 'package:iggys_point/feature/record/presentation/record_add_view_model.dart';
 
 class RecordAddPage extends ConsumerStatefulWidget {
   const RecordAddPage({
@@ -143,7 +143,7 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
 
               if (_selectedDate != null) {
                 final viewModel = ref.read(
-                    playerListViewModelProvider.notifier);
+                    recordAddViewModelProvider.notifier);
                 _isExistRecord = await viewModel.hasAnyRealRecordOnDate(selectedDate);
               }
 
@@ -549,12 +549,6 @@ class PlayerGameInput {
   int get winGames => int.parse(winGamesController.text);
   int get totalGames => int.parse(totalGamesController.text);
   String get playerId => player.id;
-  
-  void dispose() {
-    totalGamesController.dispose();
-    winGamesController.dispose();
-    winScoreController.dispose();
-  }
 
   @override
   String toString() {

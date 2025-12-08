@@ -1,25 +1,23 @@
-import 'package:flutter/foundation.dart';
-import 'package:iggys_point/data/model/player_model.dart';
-import 'package:iggys_point/data/repository/fire_store_repository_impl.dart';
-import 'package:iggys_point/domain/repository/fire_store_repository.dart';
-import 'package:iggys_point/presentation/view/record_add_page.dart';
+import 'package:flutter/material.dart';
+import 'package:iggys_point/feature/main/data/datasource/player_datasource.dart';
+import 'package:iggys_point/feature/main/data/models/player_model.dart';
+import 'package:iggys_point/feature/record/presentation/record_add_page.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-part 'player_list_view_model.g.dart';
+part 'main_view_model.g.dart';
+
 
 class PlayerListState {
   PlayerListState({
     required this.players,
-    this.hoveredId,
   });
 
   final List<PlayerModel> players;
-  final String? hoveredId;
 }
 
 @riverpod
-class PlayerListViewModel extends _$PlayerListViewModel {
-  late final FireStoreRepository _fireStoreRepository = ref.read(fireStoreImpl);
+class MainViewModel extends _$MainViewModel {
+  PlayerDataSource get _fireStoreRepository => ref.read(playerDataSourceProvider);
 
   PlayerColumn? _sortColumn = PlayerColumn.totalScore;
   bool _sortAscending = false;
@@ -37,10 +35,6 @@ class PlayerListViewModel extends _$PlayerListViewModel {
     final sorted = sortPlayers(players, PlayerColumn.totalScore, ascending: false);
 
     return PlayerListState(players: sorted);
-  }
-
-  Future uploadPlayers() async {
-    await _fireStoreRepository.uploadPlayers();
   }
 
   Future addPlayer(String name) async {
@@ -110,14 +104,5 @@ class PlayerListViewModel extends _$PlayerListViewModel {
       return false;
     }
     return true;
-  }
-
-  Future<bool> hasAnyRealRecordOnDate(String date) async {
-    try {
-      return await _fireStoreRepository.hasAnyRealRecordOnDate(date);
-    } catch (e) {
-      debugPrint(e.toString());
-      return false;
-    }
   }
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
-import 'package:iggys_point/data/model/player_model.dart';
-import 'package:iggys_point/data/model/record_model.dart';
+import 'package:iggys_point/feature/main/data/models/player_model.dart';
+import 'package:iggys_point/feature/record/data/models/record_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iggys_point/presentation/view/record_add_page.dart';
+import 'package:iggys_point/feature/record/presentation/record_add_page.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final fireStoreApiProvider = Provider<FireStoreApi>((ref) => FireStoreApi());
+part 'firestore_api.g.dart';
+
 
 class FireStoreApi {
 
@@ -246,4 +248,9 @@ class FireStoreApi {
     }
     return false; // 모두 0이거나, date자체가 없는 경우
   }
+}
+
+@riverpod
+FireStoreApi fireStoreApi(Ref ref) {
+  return FireStoreApi();
 }

@@ -1,14 +1,15 @@
 import 'package:iggys_point/core/router/app_pages.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
-import 'package:iggys_point/data/model/player_model.dart';
-import 'package:iggys_point/presentation/viewmodel/player_list_view_model.dart';
-import 'package:iggys_point/presentation/view/record_add_page.dart';
+import 'package:iggys_point/feature/main/data/models/player_model.dart';
+import 'package:iggys_point/feature/main/presentation/main_view_model.dart';
+import 'package:iggys_point/feature/record/presentation/record_add_page.dart';
 // import 'package:data_table_2/data_table_2.dart' show ColumnSize, DataColumn2, DataRow2, DataTable2;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:go_router/go_router.dart';
 import 'package:web/web.dart' as web;
+
 
 final _tapCountProvider = StateProvider<int>((ref) => 0);
 final isMobileProvider = Provider.family<bool, BuildContext>((ref, context) {
@@ -78,10 +79,9 @@ class MainPage extends ConsumerWidget {
             final String? name = await showPlayerNameDialog(context);
 
             if (name?.isNotEmpty ?? false) {
-              final playerViewModel = ref.read(playerListViewModelProvider.notifier);
-              await playerViewModel.addPlayer(name!).then((_) {
-                ref.invalidate(playerListViewModelProvider);
-              });
+              final mainViewModel = ref.read(mainViewModelProvider.notifier);
+              await mainViewModel.addPlayer(name!);
+              ref.invalidate(mainViewModelProvider);
             }
           },
           child: Text(
@@ -97,10 +97,10 @@ class MainPage extends ConsumerWidget {
             style: OutlinedButton.styleFrom(
                 side: BorderSide(color: Colors.white)),
             onPressed: () {
-              final players = ref.read(playerListViewModelProvider).value?.players ?? [];
+              final players = ref.read(mainViewModelProvider).value?.players ?? [];
 
               onSave(DateTime dateTime, List<TeamInput> teams, List<PlayerModel> nonAttendantPlayers) async {
-                final viewModel = ref.read(playerListViewModelProvider.notifier);
+                final viewModel = ref.read(mainViewModelProvider.notifier);
                 final List<PlayerGameInput> playerInputs = teams
                     .expand((team) => team.players)
                     .toList();
@@ -132,7 +132,7 @@ class MainPage extends ConsumerWidget {
                     '${dateTime.month.toString().padLeft(2, '0')}'
                     '-${dateTime.day.toString().padLeft(2, '0')}';
 
-                final mainViewModel = ref.read(playerListViewModelProvider.notifier);
+                final mainViewModel = ref.read(mainViewModelProvider.notifier);
 
                 final bool result = await mainViewModel.removeRecordFromDate(date);
 
@@ -169,7 +169,7 @@ class MainPage extends ConsumerWidget {
               'onRemove': onRemove,
               'allPlayers': players
               }).then((_) {
-                ref.invalidate(playerListViewModelProvider);
+                ref.invalidate(mainViewModelProvider);
               });
             },
             child: Text(
@@ -219,7 +219,7 @@ class MainPage extends ConsumerWidget {
   }
 
   Widget _body(BuildContext context, WidgetRef ref) {
-    final mainViewModel = ref.watch(playerListViewModelProvider);
+    final mainViewModel = ref.watch(mainViewModelProvider);
 
     return mainViewModel.when(
       data: (data) {
@@ -252,7 +252,7 @@ class MainPage extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    final viewModel = ref.watch(playerListViewModelProvider.notifier);
+    final viewModel = ref.watch(mainViewModelProvider.notifier);
 
     return Row(
       children: PlayerColumn.values.map((col) {
@@ -321,7 +321,7 @@ class MainPage extends ConsumerWidget {
           'playerName': player.name,
         }).then((refresh) {
           if ((refresh as bool?) ?? false) {
-            ref.invalidate(playerListViewModelProvider);
+            ref.invalidate(mainViewModelProvider);
           }
         }),
         tileColor: isEven ? BRColors.greyDa : BRColors.whiteE8,

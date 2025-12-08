@@ -1,13 +1,13 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'date_records_view_model.dart';
+part of 'player_detail_record_view_model.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dateRecordsViewModelHash() =>
-    r'61a61c5cc519f812822dd94f3fd03ac0bce4d937';
+String _$playerDetailRecordViewModelHash() =>
+    r'30a4f1fe13ae7602e8cfd52ecd28a73aea221fe9';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,7 +30,7 @@ class _SystemHash {
   }
 }
 
-abstract class _$DateRecordsViewModel
+abstract class _$PlayerDetailRecordViewModel
     extends BuildlessAutoDisposeAsyncNotifier<DateRecords> {
   late final String playerId;
 
@@ -39,27 +39,28 @@ abstract class _$DateRecordsViewModel
   );
 }
 
-/// See also [DateRecordsViewModel].
-@ProviderFor(DateRecordsViewModel)
-const dateRecordsViewModelProvider = DateRecordsViewModelFamily();
+/// See also [PlayerDetailRecordViewModel].
+@ProviderFor(PlayerDetailRecordViewModel)
+const playerDetailRecordViewModelProvider = PlayerDetailRecordViewModelFamily();
 
-/// See also [DateRecordsViewModel].
-class DateRecordsViewModelFamily extends Family<AsyncValue<DateRecords>> {
-  /// See also [DateRecordsViewModel].
-  const DateRecordsViewModelFamily();
+/// See also [PlayerDetailRecordViewModel].
+class PlayerDetailRecordViewModelFamily
+    extends Family<AsyncValue<DateRecords>> {
+  /// See also [PlayerDetailRecordViewModel].
+  const PlayerDetailRecordViewModelFamily();
 
-  /// See also [DateRecordsViewModel].
-  DateRecordsViewModelProvider call(
+  /// See also [PlayerDetailRecordViewModel].
+  PlayerDetailRecordViewModelProvider call(
     String playerId,
   ) {
-    return DateRecordsViewModelProvider(
+    return PlayerDetailRecordViewModelProvider(
       playerId,
     );
   }
 
   @override
-  DateRecordsViewModelProvider getProviderOverride(
-    covariant DateRecordsViewModelProvider provider,
+  PlayerDetailRecordViewModelProvider getProviderOverride(
+    covariant PlayerDetailRecordViewModelProvider provider,
   ) {
     return call(
       provider.playerId,
@@ -78,30 +79,31 @@ class DateRecordsViewModelFamily extends Family<AsyncValue<DateRecords>> {
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'dateRecordsViewModelProvider';
+  String? get name => r'playerDetailRecordViewModelProvider';
 }
 
-/// See also [DateRecordsViewModel].
-class DateRecordsViewModelProvider extends AutoDisposeAsyncNotifierProviderImpl<
-    DateRecordsViewModel, DateRecords> {
-  /// See also [DateRecordsViewModel].
-  DateRecordsViewModelProvider(
+/// See also [PlayerDetailRecordViewModel].
+class PlayerDetailRecordViewModelProvider
+    extends AutoDisposeAsyncNotifierProviderImpl<PlayerDetailRecordViewModel,
+        DateRecords> {
+  /// See also [PlayerDetailRecordViewModel].
+  PlayerDetailRecordViewModelProvider(
     String playerId,
   ) : this._internal(
-          () => DateRecordsViewModel()..playerId = playerId,
-          from: dateRecordsViewModelProvider,
-          name: r'dateRecordsViewModelProvider',
+          () => PlayerDetailRecordViewModel()..playerId = playerId,
+          from: playerDetailRecordViewModelProvider,
+          name: r'playerDetailRecordViewModelProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
-                  : _$dateRecordsViewModelHash,
-          dependencies: DateRecordsViewModelFamily._dependencies,
+                  : _$playerDetailRecordViewModelHash,
+          dependencies: PlayerDetailRecordViewModelFamily._dependencies,
           allTransitiveDependencies:
-              DateRecordsViewModelFamily._allTransitiveDependencies,
+              PlayerDetailRecordViewModelFamily._allTransitiveDependencies,
           playerId: playerId,
         );
 
-  DateRecordsViewModelProvider._internal(
+  PlayerDetailRecordViewModelProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
@@ -115,7 +117,7 @@ class DateRecordsViewModelProvider extends AutoDisposeAsyncNotifierProviderImpl<
 
   @override
   FutureOr<DateRecords> runNotifierBuild(
-    covariant DateRecordsViewModel notifier,
+    covariant PlayerDetailRecordViewModel notifier,
   ) {
     return notifier.build(
       playerId,
@@ -123,10 +125,10 @@ class DateRecordsViewModelProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 
   @override
-  Override overrideWith(DateRecordsViewModel Function() create) {
+  Override overrideWith(PlayerDetailRecordViewModel Function() create) {
     return ProviderOverride(
       origin: this,
-      override: DateRecordsViewModelProvider._internal(
+      override: PlayerDetailRecordViewModelProvider._internal(
         () => create()..playerId = playerId,
         from: from,
         name: null,
@@ -139,14 +141,15 @@ class DateRecordsViewModelProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<DateRecordsViewModel, DateRecords>
-      createElement() {
-    return _DateRecordsViewModelProviderElement(this);
+  AutoDisposeAsyncNotifierProviderElement<PlayerDetailRecordViewModel,
+      DateRecords> createElement() {
+    return _PlayerDetailRecordViewModelProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is DateRecordsViewModelProvider && other.playerId == playerId;
+    return other is PlayerDetailRecordViewModelProvider &&
+        other.playerId == playerId;
   }
 
   @override
@@ -160,19 +163,20 @@ class DateRecordsViewModelProvider extends AutoDisposeAsyncNotifierProviderImpl<
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin DateRecordsViewModelRef
+mixin PlayerDetailRecordViewModelRef
     on AutoDisposeAsyncNotifierProviderRef<DateRecords> {
   /// The parameter `playerId` of this provider.
   String get playerId;
 }
 
-class _DateRecordsViewModelProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<DateRecordsViewModel,
-        DateRecords> with DateRecordsViewModelRef {
-  _DateRecordsViewModelProviderElement(super.provider);
+class _PlayerDetailRecordViewModelProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<PlayerDetailRecordViewModel,
+        DateRecords> with PlayerDetailRecordViewModelRef {
+  _PlayerDetailRecordViewModelProviderElement(super.provider);
 
   @override
-  String get playerId => (origin as DateRecordsViewModelProvider).playerId;
+  String get playerId =>
+      (origin as PlayerDetailRecordViewModelProvider).playerId;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
