@@ -39,7 +39,7 @@ GoRouter appRouter(Ref ref) {
           final Map data = state.extra as Map;
 
           final List<PlayerModel> players = data['allPlayers'];
-          final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>) onSave = data['onSave'];
+          final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>, bool) onSave = data['onSave'];
           final Function(DateTime date)? onRemove = data['onRemove'];
 
           return RecordAddPage(

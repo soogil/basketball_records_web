@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // for TextInputFormatter
+import 'package:iggys_point/core/widgets/toogle_button.dart';
 import 'package:iggys_point/feature/main/data/models/player_model.dart';
 import 'package:iggys_point/feature/main/presentation/main_page.dart';
 import 'package:iggys_point/feature/record/presentation/record_add_view_model.dart';
@@ -15,7 +16,7 @@ class RecordAddPage extends ConsumerStatefulWidget {
   });
 
   final List<PlayerModel> allPlayers;
-  final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>) onSave;
+  final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>, bool) onSave;
   final Function(DateTime date)? onRemove;
 
   @override
@@ -27,6 +28,7 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
   final List<List<PlayerGameInput>> teams = [[], []];
   late final List<TeamMeta> teamMetas = [TeamMeta(), TeamMeta()];
   int _selectedTeam = 0;
+  bool _isDouble = false;
   bool _isExistRecord = false;
   DateTime? _selectedDate;
 
@@ -169,6 +171,12 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
           )
       ),
       actions: [
+        ToggleButton(
+            text: '점수 2배',
+            onPressed: (isClicked) {
+              _isDouble = isClicked;
+            }),
+        SizedBox(width: 10,),
         if (_selectedDate != null && _isExistRecord) Container(
           margin: EdgeInsets.only(right: 30),
           height: 50,
@@ -492,7 +500,7 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
                     players: teams[i],
                   ),
             );
-            widget.onSave(_selectedDate!, teamInputs, availablePlayers);
+            widget.onSave(_selectedDate!, teamInputs, availablePlayers, _isDouble);
           } else {
             showDialog(
                 context: context,
@@ -549,6 +557,7 @@ class PlayerGameInput {
   int get winGames => int.parse(winGamesController.text);
   int get totalGames => int.parse(totalGamesController.text);
   String get playerId => player.id;
+  String get playerName => player.name;
 
   @override
   String toString() {

@@ -99,11 +99,24 @@ class MainPage extends ConsumerWidget {
             onPressed: () {
               final players = ref.read(mainViewModelProvider).value?.players ?? [];
 
-              onSave(DateTime dateTime, List<TeamInput> teams, List<PlayerModel> nonAttendantPlayers) async {
+              onSave(DateTime dateTime, List<TeamInput> teams,
+                  List<PlayerModel> nonAttendantPlayers, bool isDouble) async {
                 final viewModel = ref.read(mainViewModelProvider.notifier);
                 final List<PlayerGameInput> playerInputs = teams
                     .expand((team) => team.players)
                     .toList();
+
+                if (isDouble) {
+                  for (PlayerGameInput playerInput in playerInputs) {
+                    if (playerInput.attendanceScore > 0) {
+                      playerInput.attendanceScore *= 2;
+                    }
+                    playerInput.winScoreController.text = '${playerInput.winScore * 2}';
+
+                    // print('${playerInput.playerName} '
+                    //     '${playerInput.attendanceScore} ${playerInput.winScore}');
+                  }
+                }
 
                 final List<PlayerGameInput> absentInputs = nonAttendantPlayers
                     .map((player) => PlayerGameInput(

@@ -10,9 +10,12 @@ part 'firestore_api.g.dart';
 
 
 class FireStoreApi {
+  FireStoreApi(this._firestore);
+
+  final FirebaseFirestore _firestore;
 
   Future uploadPlayersToFireStore() async {
-    // final playersCollection = FirebaseFirestore.instance.collection('players');
+    // final playersCollection = _firestore.collection('players');
     // final querySnapshot = await playersCollection.get();
     //
     // for (var doc in querySnapshot.docs) {
@@ -20,7 +23,7 @@ class FireStoreApi {
     // }
 
     //backup data download
-    // final playersRef = FirebaseFirestore.instance.collection('players');
+    // final playersRef = _firestore.collection('players');
     // final snapshot = await playersRef.get();
     //
     // Map<String, dynamic> allRecords = {};
@@ -44,7 +47,7 @@ class FireStoreApi {
     //   final players = jsonDecode(playersJson) as Map<String, dynamic>;
     //   final records = jsonDecode(playerRecordsJson) as Map<String, dynamic>;
     //
-    //   final firestore = FirebaseFirestore.instance;
+    //   final firestore = _firestore;
     //
     //   // players (id = docId, value = fields)
     //   for (final entry in players.entries) {
@@ -64,7 +67,7 @@ class FireStoreApi {
   }
 
   Future<QuerySnapshot<Map<String, dynamic>>> getPlayers() async {
-    final querySnapshot = await FirebaseFirestore.instance
+    final querySnapshot = await _firestore
         .collection('players')
         .get();
 
@@ -72,7 +75,7 @@ class FireStoreApi {
   }
 
   Future<List> getPlayerRecords(String playerId) async {
-    final docSnapshot = await FirebaseFirestore.instance
+    final docSnapshot = await _firestore
         .collection('playerRecords')
         .doc(playerId)
         .get();
@@ -87,10 +90,10 @@ class FireStoreApi {
   }
 
   Future<void> addPlayer(String name) async {
-    final fireStore = FirebaseFirestore.instance;
+    final fireStore = _firestore;
     final batch = fireStore.batch();
-    final playerRef = FirebaseFirestore.instance.collection('players').doc();
-    final playerRecordsRef = FirebaseFirestore.instance.collection('playerRecords').doc();
+    final playerRef = _firestore.collection('players').doc();
+    final playerRecordsRef = _firestore.collection('playerRecords').doc();
     final player = PlayerModel(
       id: playerRef.id,
       name: name,
@@ -110,7 +113,7 @@ class FireStoreApi {
   }
 
   Future<void> removePlayer(String playerId) async {
-    final fireStore = FirebaseFirestore.instance;
+    final fireStore = _firestore;
     final batch = fireStore.batch();
 
     final playerRef = fireStore.collection('players').doc(playerId);
@@ -125,7 +128,7 @@ class FireStoreApi {
   Future<void> updatePlayerRecords(
       String recordDate,
       List<PlayerGameInput> playerInputs) async {
-    final fireStore = FirebaseFirestore.instance;
+    final fireStore = _firestore;
     final batch = fireStore.batch();
 
     for (final playerInput in playerInputs) {
@@ -188,7 +191,7 @@ class FireStoreApi {
   }
 
   Future<void> removeRecordFromDate(String targetDate) async {
-    final firestore = FirebaseFirestore.instance;
+    final firestore = _firestore;
     final playerRecordsRef = firestore.collection('playerRecords');
     final playersRef = firestore.collection('players');
 
@@ -228,7 +231,7 @@ class FireStoreApi {
   }
 
   Future<bool> hasAnyRealRecordOnDate(String date) async {
-    final playerRecordsRef = FirebaseFirestore.instance.collection('playerRecords');
+    final playerRecordsRef = _firestore.collection('playerRecords');
     final snapshot = await playerRecordsRef.get();
 
     for (final doc in snapshot.docs) {
@@ -248,9 +251,15 @@ class FireStoreApi {
     }
     return false; // 모두 0이거나, date자체가 없는 경우
   }
+
+  bool isMilestonePassed(int before, int after, {int milestone = 300}) {
+    final beforeSection = before ~/ milestone;
+    final afterSection = after ~/ milestone;
+    return beforeSection < afterSection;
+  }
 }
 
 @riverpod
 FireStoreApi fireStoreApi(Ref ref) {
-  return FireStoreApi();
+  return FireStoreApi(FirebaseFirestore.instance);
 }
