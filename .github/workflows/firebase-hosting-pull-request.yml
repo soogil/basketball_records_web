@@ -12,8 +12,13 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          
       - uses: actions/checkout@v4
-      - run:
+      - run: |
           flutter --version
           flutter pub get
           flutter build web --release
