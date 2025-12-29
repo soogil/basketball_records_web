@@ -69,7 +69,6 @@ class MainPage extends ConsumerWidget {
       backgroundColor: BRColors.greenB2,
       centerTitle: true,
       title: PopupMenuButton<String>(
-            tooltip: '시즌 변경',
       onSelected: (String season) {
         ref.read(selectedSeasonProvider.notifier).state = season;
       },
