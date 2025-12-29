@@ -124,4 +124,88 @@ void main() {
       expect(playersSnap.docs.first.data()['name'], 'Kobe');
     });
   });
+
+  group('시즌 데이터 초기화 테스트', ()
+  {
+    late FakeFirebaseFirestore fake;
+    late FireStoreApi api;
+
+    setUp(() {
+      fake = FakeFirebaseFirestore();
+      api = FireStoreApi(fake as FirebaseFirestore);
+    });
+
+    test('archiveAndResetSeason: 데이터 백업 후 시즌 점수 초기화, 누적 점수 유지 확인', () async {
+      // [1] 초기 데이터 세팅 (2025년 시즌 종료 시점 가정)
+      final playerId = 'player_1';
+
+      // 플레이어: 시즌 점수 100점, 누적 점수 1000점
+      await fake.collection('players').doc(playerId).set({
+        'name': 'Test Player',
+        'totalScore': 100,
+        'attendanceScore': 50,
+        'winScore': 50,
+        'seasonTotalWins': 10.0,
+        'seasonTotalGames': 20,
+        'accumulatedScore': 1000, // 이 값은 유지되어야 함
+        'scoreAchieved': true,
+      });
+
+      // 기록: 기록이 1개 존재
+      await fake.collection('playerRecords').doc(playerId).set({
+        'records': [
+          {'date': '2025-12-01', 'attendanceScore': 10, 'winScore': 10}
+        ]
+      });
+
+      // [2] 함수 실행 (2025 시즌 마감)
+      // *주의: FireStoreApi 클래스에 archiveAndResetSeason 함수가 추가되어 있어야 합니다.
+      await api.archiveAndResetSeason('2025');
+
+      // [3] 검증 (Assertions)
+
+      // 3-1. 백업 확인 (seasons/2025/players)
+      final backupSnapshot = await fake
+          .collection('seasons')
+          .doc('2025')
+          .collection('players')
+          .doc(playerId)
+          .get();
+
+      expect(backupSnapshot.exists, true, reason: '백업 데이터가 생성되어야 함');
+      expect(backupSnapshot.data()!['totalScore'], 100,
+          reason: '백업된 데이터는 기존 점수(100)를 가지고 있어야 함');
+
+      // 3-2. 초기화 확인 (players)
+      final currentSnapshot = await fake.collection('players')
+          .doc(playerId)
+          .get();
+
+      expect(currentSnapshot.data()!['totalScore'], 0,
+          reason: '현재 시즌 점수는 0으로 초기화되어야 함');
+      expect(currentSnapshot.data()!['attendanceScore'], 0);
+      expect(currentSnapshot.data()!['seasonTotalGames'], 0);
+
+      // ★ 핵심: 누적 점수는 유지되었는지 확인
+      expect(currentSnapshot.data()!['accumulatedScore'], 1000,
+          reason: '누적 점수는 초기화되지 않고 유지되어야 함');
+
+      // 3-3. 기록 초기화 확인 (playerRecords)
+      final recordSnapshot = await fake.collection('playerRecords').doc(
+          playerId).get();
+      final List records = recordSnapshot.data()!['records'];
+
+      expect(records.isEmpty, true, reason: '현재 시즌의 기록 리스트는 비워져야 함');
+
+      // 3-4. 기록 백업 확인
+      final backupRecordSnapshot = await fake
+          .collection('seasons')
+          .doc('2025')
+          .collection('playerRecords')
+          .doc(playerId)
+          .get();
+      final List backupRecords = backupRecordSnapshot.data()!['records'];
+      expect(backupRecords.length, 1, reason: '백업된 기록은 그대로 남아있어야 함');
+    });
+  });
 }

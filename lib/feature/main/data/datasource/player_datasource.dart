@@ -12,9 +12,13 @@ abstract class PlayerDataSource {
   Future<void> removePlayer(String playerId);
   Future<void> uploadPlayers();
   Future<void> removeRecordFromDate(String date);
+  Future getSeasons();
   Future<List<PlayerModel>> getPlayers();
+  Future<List<PlayerModel>> getPlayersFromYear(String year);
   Future<void> updatePlayerRecords(String recordDate, List<PlayerGameInput> player);
   Future<List<RecordModel>> getPlayerRecords(String playerId);
+  Future<List<RecordModel>> getPlayerRecordsFromYear(String year, String playerId);
+  Future<void> archiveAndResetSeason(String seasonName);
 }
 
 class PlayerDatasourceImpl implements PlayerDataSource {
@@ -43,8 +47,21 @@ class PlayerDatasourceImpl implements PlayerDataSource {
   }
 
   @override
+  Future getSeasons() async {
+    return await _fireStoreApi.getSeasons();
+  }
+
+  @override
   Future<List<PlayerModel>> getPlayers() async {
     final result = await _fireStoreApi.getPlayers();
+    return result.docs.map((doc) {
+      return PlayerModel.fromFireStore(doc.id, doc.data());
+    }).toList();
+  }
+
+  @override
+  Future<List<PlayerModel>> getPlayersFromYear(String year) async {
+    final result = await _fireStoreApi.getPlayersFromYear(year);
     return result.docs.map((doc) {
       return PlayerModel.fromFireStore(doc.id, doc.data());
     }).toList();
@@ -64,6 +81,22 @@ class PlayerDatasourceImpl implements PlayerDataSource {
     records.sort((a, b) => b.date.compareTo(a.date));
 
     return records;
+  }
+
+  @override
+  Future<List<RecordModel>> getPlayerRecordsFromYear(String year, String playerId) async {
+    final result = await _fireStoreApi.getPlayerRecordsFromYear(year, playerId);
+
+    final records = result.map((e) => RecordModel.fromJson(Map<String, dynamic>.from(e))).toList();
+
+    records.sort((a, b) => b.date.compareTo(a.date));
+
+    return records;
+  }
+
+  @override
+  Future<void> archiveAndResetSeason(String seasonName) async {
+    return await _fireStoreApi.archiveAndResetSeason(seasonName);
   }
 }
 

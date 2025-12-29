@@ -112,7 +112,7 @@ extension PlayerColumnExtension on PlayerColumn {
       case PlayerColumn.rank: return '순위';
       case PlayerColumn.name: return '이름';
       case PlayerColumn.winScore: return '승점';
-      case PlayerColumn.accumulatedScore: return '24년~25년\n누적 합계';
+      case PlayerColumn.accumulatedScore: return '24년이후\n누적 합계';
       case PlayerColumn.totalScore: return '총점';
       case PlayerColumn.attendanceScore: return '출석';
       case PlayerColumn.winRate: return '승률';

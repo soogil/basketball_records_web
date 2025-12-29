@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iggys_point/feature/main/data/datasource/player_datasource.dart';
 import 'package:iggys_point/feature/main/data/models/player_model.dart';
 import 'package:iggys_point/feature/record/presentation/record_add_page.dart';
@@ -10,9 +11,21 @@ part 'main_view_model.g.dart';
 class PlayerListState {
   PlayerListState({
     required this.players,
+    required this.seasons,
   });
 
   final List<PlayerModel> players;
+  final List<String> seasons;
+
+  PlayerListState copyWith({
+    List<PlayerModel>? players,
+    List<String>? seasons,
+}) {
+    return PlayerListState(
+        players: players ?? this.players,
+        seasons: seasons ?? this.seasons
+    );
+  }
 }
 
 @riverpod
@@ -28,13 +41,41 @@ class MainViewModel extends _$MainViewModel {
 
   @override
   Future<PlayerListState> build() async {
-    final List<PlayerModel> players = await _fireStoreRepository.getPlayers();
+    final selectedSeason = ref.watch(selectedSeasonProvider);
 
-    debugPrint(players.length.toString());
+    final seasons = await _getSeason();
+    final players = await _fetchPlayers(selectedSeason);
 
-    final sorted = sortPlayers(players, PlayerColumn.totalScore, ascending: false);
+    return PlayerListState(
+      seasons: seasons,
+      players: players
+    );
+  }
 
-    return PlayerListState(players: sorted);
+  Future<List<String>> _getSeason() async {
+    final currentSeason = ref.read(currentSeasonProvider);
+    final List<String> seasons = await _fireStoreRepository.getSeasons();
+
+    if (!seasons.contains(currentSeason)) {
+      seasons.insert(0, currentSeason);
+    }
+
+    return seasons;
+  }
+
+  Future<List<PlayerModel>> _fetchPlayers(String season) async {
+    late final List<PlayerModel> players;
+    final currentSeason = ref.read(currentSeasonProvider);
+
+    if (currentSeason == season) {
+      players = await _fireStoreRepository.getPlayers();
+    } else {
+      players = await _fireStoreRepository.getPlayersFromYear(season);
+    }
+
+    final sortedPlayers = sortPlayers(players, PlayerColumn.totalScore, ascending: false);
+
+    return sortedPlayers;
   }
 
   Future addPlayer(String name) async {
@@ -86,7 +127,8 @@ class MainViewModel extends _$MainViewModel {
 
   void sortPlayersOnTable(PlayerColumn column) {
     final sorted = sortPlayers(state.value!.players, column);
-    state = AsyncData(PlayerListState(players: sorted));
+    state = AsyncData(state.value!.copyWith(
+        players: sorted));
   }
 
   Future savePlayerRecords({
@@ -105,4 +147,32 @@ class MainViewModel extends _$MainViewModel {
     }
     return true;
   }
+
+  // 초기화 및 시즌 리셋 기능
+  // Future<bool> archiveAndResetSeason() async {
+  //   try {
+  //     await _fireStoreRepository.archiveAndResetSeason('2025');
+  //   } catch(e) {
+  //     debugPrint(e.toString());
+  //     return false;
+  //   }
+  //   return true;
+  // }
 }
+
+final selectedSeasonProvider = StateProvider<String>((ref) {
+  final currentSeason = ref.read(currentSeasonProvider);
+  return currentSeason;
+});
+final currentSeasonProvider = StateProvider<String>((ref) {
+  DateTime now = DateTime.now();
+  // return now.year.toString();
+  // todo 새해되면 수정
+  return '2026';
+});
+
+final isCurrentSeasonProvider = Provider<bool>((ref) {
+  final selected = ref.watch(selectedSeasonProvider);
+  final current = ref.watch(currentSeasonProvider);
+  return selected == current;
+});

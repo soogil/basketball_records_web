@@ -74,8 +74,41 @@ class FireStoreApi {
     return querySnapshot;
   }
 
+  Future<QuerySnapshot<Map<String, dynamic>>> getPlayersFromYear(String year) async {
+    final querySnapshot = await _firestore
+        .collection('seasons')
+        .doc(year)
+        .collection('players')
+        .get();
+
+    return querySnapshot;
+  }
+
+  Future<List<String>> getSeasons() async {
+    final snapshot = await _firestore.collection('seasons').get();
+
+    return snapshot.docs.map((doc) => doc.id).toList();
+  }
+
   Future<List> getPlayerRecords(String playerId) async {
     final docSnapshot = await _firestore
+        .collection('playerRecords')
+        .doc(playerId)
+        .get();
+
+    if (!docSnapshot.exists) return [];
+
+
+    final data = docSnapshot.data();
+    if (data == null || !data.containsKey('records')) return [];
+
+    return data['records'];
+  }
+
+  Future<List> getPlayerRecordsFromYear(String year, String playerId) async {
+    final docSnapshot = await _firestore
+    .collection('seasons')
+        .doc(year)
         .collection('playerRecords')
         .doc(playerId)
         .get();
@@ -250,6 +283,68 @@ class FireStoreApi {
       }
     }
     return false; // 모두 0이거나, date자체가 없는 경우
+  }
+
+  /// 시즌 마감 & 초기화 함수
+  /// 1. 현재 players, playerRecords 데이터를 seasons/{seasonName}/... 으로 복사
+  /// 2. 현재 players의 시즌 점수(승점, 게임수 등)를 0으로 초기화 (누적 점수는 유지)
+  /// 3. 현재 playerRecords의 기록을 모두 삭제
+  Future<void> archiveAndResetSeason(String seasonName) async {
+    final firestore = _firestore;
+    final batch = firestore.batch();
+
+    // 1. 현재 데이터 모두 가져오기
+    final playersSnapshot = await firestore.collection('players').get();
+    final recordsSnapshot = await firestore.collection('playerRecords').get();
+
+    // print('시즌 마감 시작: $seasonName (플레이어 ${playersSnapshot.size}명 처리 중...)');
+
+    // 2. 플레이어 데이터 처리
+    for (var doc in playersSnapshot.docs) {
+      final data = doc.data();
+      final playerId = doc.id;
+
+      // [백업] seasons/2025/players/문서ID 로 복사
+      final archiveRef = firestore
+          .collection('seasons')
+          .doc(seasonName)
+          .collection('players')
+          .doc(playerId);
+      batch.set(archiveRef, data);
+
+      // [초기화] 기존 players 컬렉션의 시즌 데이터만 0으로 리셋
+      final playerRef = firestore.collection('players').doc(playerId);
+      batch.update(playerRef, {
+        'totalScore': 0,        // 총점 초기화
+        'attendanceScore': 0,   // 출석 점수 초기화
+        'winScore': 0,          // 승리 점수 초기화
+        'seasonTotalGames': 0,  // 시즌 경기 수 초기화
+        'seasonTotalWins': 0.0, // 시즌 승리 수 초기화
+        // 'accumulatedScore': ... // 이 줄이 없으므로 누적 점수는 그대로 유지됩니다!
+        'scoreAchieved': false, // (선택) 달성 여부 초기화
+      });
+    }
+
+    // 3. 상세 기록(Record) 데이터 처리
+    for (var doc in recordsSnapshot.docs) {
+      final data = doc.data();
+      final playerId = doc.id;
+
+      // [백업] seasons/2025/playerRecords/id 해당년도로 복사
+      final archiveRecordRef = firestore
+          .collection('seasons')
+          .doc(seasonName)
+          .collection('playerRecords')
+          .doc(playerId);
+      batch.set(archiveRecordRef, data);
+
+      // [초기화] 기존 기록 리스트 비우기
+      final recordRef = firestore.collection('playerRecords').doc(playerId);
+      batch.set(recordRef, {'records': []});
+    }
+
+    // 4. 일괄 실행 (이때 실제 DB에 반영됨)
+    await batch.commit();
   }
 
   bool isMilestonePassed(int before, int after, {int milestone = 300}) {

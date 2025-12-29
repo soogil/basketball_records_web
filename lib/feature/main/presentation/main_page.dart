@@ -33,43 +33,106 @@ class MainPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final mainViewModel = ref.watch(mainViewModelProvider);
+
     return RefreshIndicator(
       onRefresh: deleteAllCookies,
-      child: Scaffold(
-        body: _body(context, ref),
-        // floatingActionButton: FloatingActionButton(
-        //   onPressed: () {
-        //     final viewmodel = ref.read(playerListViewModelProvider.notifier);
-        //
-        //     viewmodel.uploadPlayers();
-        //   },
-        //   child: const Icon(Icons.refresh),
-        // ),
-      ),
+      child: mainViewModel.when(
+        data: (data) {
+          return Scaffold(
+            body: _recordView(context, ref, data),
+            // floatingActionButton: FloatingActionButton(
+            //   onPressed: () {
+            //     final viewmodel = ref.read(playerListViewModelProvider.notifier);
+            //
+            //     viewmodel.uploadPlayers();
+            //   },
+            //   child: const Icon(Icons.refresh),
+            // ),
+          );
+          // return _playerList(data.players);
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('에러 발생: $error')),
+      )
     );
   }
 
-  SliverAppBar _appBar(BuildContext context, WidgetRef ref) {
-    final tapCount = ref.watch(_tapCountProvider);
-    final isMobile = ref.watch(isMobileProvider(context));
+  SliverAppBar _appBar(BuildContext context, WidgetRef ref, PlayerListState state,) {
+    final int tapCount = ref.watch(_tapCountProvider);
+    final bool isMobile = ref.watch(isMobileProvider(context));
+
+    final String selectedSeason = ref.watch(selectedSeasonProvider);
 
     return SliverAppBar(
       toolbarHeight: 70,
       backgroundColor: BRColors.greenB2,
       centerTitle: true,
-      title: GestureDetector(
+      title: PopupMenuButton<String>(
+            tooltip: '시즌 변경',
+      onSelected: (String season) {
+        ref.read(selectedSeasonProvider.notifier).state = season;
+      },
+      // 버튼 모양 (텍스트 + 아이콘)
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '이기스 포인트 $selectedSeason', // 예: "2026 시즌"
+            style: TextStyle(
+                fontSize: 24.0.responsiveFontSize(context, minFontSize: 18),
+                color: BRColors.white,
+                fontWeight: FontWeight.bold
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.arrow_drop_down, color: Colors.white),
+        ],
+      ),
+      // 드롭다운 메뉴 아이템들
+        itemBuilder: (BuildContext context) {
+          return state.seasons.map((season) {
+            late String currentYear;
+            final isCurrentYear = season.isEmpty;
+
+            if (isCurrentYear) {
+              DateTime now = DateTime.now();
+
+              int year = now.year;
+
+              currentYear = year.toString();
+            } else {
+              currentYear = season;
+            }
+
+            return PopupMenuItem<String>(
+              value: season,
+              child: Text(
+                '이기스 포인트 $currentYear',
+              ),
+            );
+          }).toList();
+        },
+            ),
+      // 초기화 및 시즌 리셋
+      // leading: TextButton(
+      //   onPressed: () async {
+      //     await ref.read(mainViewModelProvider.notifier).archiveAndResetSeason();
+      //   },
+      //   child: Text("2025 마감 실행(조심!)", style: TextStyle(color: Colors.red)),
+      // ),
+      // 관리자용 기록추가 버튼
+      leading: GestureDetector(
+        child: Container(
+          color: Colors.transparent,
+          width: 50,
+          height: 50,
+        ),
         onTap: () {
           if (!isMobile) {
             ref.read(_tapCountProvider.notifier).state++;
           }
         },
-        child: Text(
-          '이기스 포인트',
-          style: TextStyle(
-              fontSize: 24.0.responsiveFontSize(context, minFontSize: 18),
-              color: BRColors.white
-          ),
-        ),
       ),
       actions: tapCount < 7 ? [] :[
         OutlinedButton(
@@ -231,32 +294,19 @@ class MainPage extends ConsumerWidget {
     );
   }
 
-  Widget _body(BuildContext context, WidgetRef ref) {
-    final mainViewModel = ref.watch(mainViewModelProvider);
-
-    return mainViewModel.when(
-      data: (data) {
-        return _body2(context, ref, data.players);
-        // return _playerList(data.players);
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('에러 발생: $error')),
-    );
-  }
-
-  Widget _body2(BuildContext context, WidgetRef ref, List<PlayerModel> players) {
+  Widget _recordView(BuildContext context, WidgetRef ref, PlayerListState state) {
     return CustomScrollView(
       slivers: [
-        _appBar(context, ref),
+        _appBar(context, ref, state),
         SliverStickyHeader(
           header: _buildHeader(context, ref),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                final player = players[index];
+                final player = state.players[index];
                 return _buildTableRow(context, ref, player, index);
               },
-              childCount: players.length,
+              childCount: state.players.length,
             ),
           ),
         ),
@@ -324,7 +374,8 @@ class MainPage extends ConsumerWidget {
 
   // 데이터 Row
   Widget _buildTableRow(BuildContext context, WidgetRef ref, PlayerModel player, int index) {
-    final isEven = index.isEven;
+    final bool isCurrentSeason = ref.watch(isCurrentSeasonProvider);
+    final bool isEven = index.isEven;
 
     return ListTile(
       contentPadding: EdgeInsets.all(0),
@@ -359,7 +410,7 @@ class MainPage extends ConsumerWidget {
                             fontSize: 18.0.responsiveFontSize(context, minFontSize: 13),
                           ),
                         ),
-                        if (col == PlayerColumn.accumulatedScore && player.scoreAchieved)
+                        if (col == PlayerColumn.accumulatedScore && player.scoreAchieved && isCurrentSeason)
                           Row(
                             children: [
                               const SizedBox(width: 5),
