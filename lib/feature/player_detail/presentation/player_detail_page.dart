@@ -1,4 +1,5 @@
 import 'package:iggys_point/core/theme/br_color.dart';
+import 'package:iggys_point/feature/main/presentation/main_view_model.dart';
 import 'package:iggys_point/feature/record/data/models/record_model.dart';
 import 'package:iggys_point/feature/main/presentation/main_page.dart';
 import 'package:iggys_point/feature/player_detail/presentation/player_detail_record_view_model.dart';
@@ -131,7 +132,7 @@ class PlayerDetailPage extends ConsumerWidget {
                   delegate: SliverChildBuilderDelegate(
                         (context, index) {
                       final record = state.records[index];
-                      return _buildTableRow(record, index, context);
+                      return _buildTableRow(context, ref, record, index);
                     },
                     childCount: state.records.length,
                   ),
@@ -140,14 +141,19 @@ class PlayerDetailPage extends ConsumerWidget {
             ],
           ),
         ),
-        _totalState(context, state.records),
+        _totalState(context, ref, state.records),
       ],
     );
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
+    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
+    final List<PlayerRecordColumn> columns = (selectedSeason >= 2026)
+        ? PlayerRecordColumn.currentYearColumns
+        : PlayerRecordColumn.allColumns;
+
     return Row(
-      children: PlayerRecordColumn.values.map((col) {
+      children: columns.map((col) {
         // final isSorted = viewModel.sortColumn == col;
         return Expanded(
           flex: col.flex,
@@ -174,8 +180,13 @@ class PlayerDetailPage extends ConsumerWidget {
   }
 
   // 데이터 Row
-  Widget _buildTableRow(RecordModel record, int index, BuildContext context) {
+  Widget _buildTableRow(BuildContext context, WidgetRef ref, RecordModel record, int index) {
     final isEven = index.isEven;
+
+    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
+    final List<PlayerRecordColumn> columns = (selectedSeason >= 2026)
+        ? PlayerRecordColumn.currentYearColumns
+        : PlayerRecordColumn.allColumns;
 
     return ListTile(
         contentPadding: EdgeInsets.all(0),
@@ -186,7 +197,7 @@ class PlayerDetailPage extends ConsumerWidget {
         tileColor: isEven ? BRColors.greyDa : BRColors.whiteE8,
         title: Row(
             mainAxisSize: MainAxisSize.max,
-            children: PlayerRecordColumn.values
+            children: columns
                 .map((col) =>
                 Expanded(
                     flex: col.flex,
@@ -201,7 +212,12 @@ class PlayerDetailPage extends ConsumerWidget {
         ));
   }
 
-  Widget _totalState(BuildContext context, List<RecordModel> records) {
+  Widget _totalState(BuildContext context, WidgetRef ref, List<RecordModel> records) {
+    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
+    final List<PlayerRecordColumn> columns = (selectedSeason >= 2026)
+        ? PlayerRecordColumn.currentYearColumns
+        : PlayerRecordColumn.allColumns;
+
     // 각 컬럼별 합계 계산
     Map<PlayerRecordColumn, num> totals = {};
     for (final col in PlayerRecordColumn.values) {
@@ -229,7 +245,7 @@ class PlayerDetailPage extends ConsumerWidget {
       height: 50,
       color: BRColors.greenB2,
       child: Row(
-        children: PlayerRecordColumn.values.map((col) {
+        children: columns.map((col) {
           String display = '';
           if (col == PlayerRecordColumn.date) {
             display = '합계';

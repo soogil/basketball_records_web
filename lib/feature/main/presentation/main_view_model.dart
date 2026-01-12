@@ -66,6 +66,7 @@ class MainViewModel extends _$MainViewModel {
   Future<List<PlayerModel>> _fetchPlayers(String season) async {
     late final List<PlayerModel> players;
     final currentSeason = ref.read(currentSeasonProvider);
+    final bool isNewSeason = int.parse(currentSeason) >= 2026;
 
     if (currentSeason == season) {
       players = await _fireStoreRepository.getPlayers();
@@ -73,7 +74,10 @@ class MainViewModel extends _$MainViewModel {
       players = await _fireStoreRepository.getPlayersFromYear(season);
     }
 
-    final sortedPlayers = sortPlayers(players, PlayerColumn.totalScore, ascending: false);
+    final sortedPlayers = sortPlayers(players, isNewSeason
+        ? PlayerColumn.attendanceScore
+        : PlayerColumn.totalScore,
+        ascending: false);
 
     return sortedPlayers;
   }
@@ -166,9 +170,7 @@ final selectedSeasonProvider = StateProvider<String>((ref) {
 });
 final currentSeasonProvider = StateProvider<String>((ref) {
   DateTime now = DateTime.now();
-  // return now.year.toString();
-  // todo 새해되면 수정
-  return '2026';
+  return now.year.toString();
 });
 
 final isCurrentSeasonProvider = Provider<bool>((ref) {

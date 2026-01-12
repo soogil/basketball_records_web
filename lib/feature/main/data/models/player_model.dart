@@ -131,4 +131,10 @@ enum PlayerColumn {
 
   const PlayerColumn(this.flex);
   final int flex;
+
+  static List<PlayerColumn> get allColumns => values;
+
+  static List<PlayerColumn> get currentYearColumns =>
+      values.where((column) => column != PlayerColumn.winScore
+          && column != PlayerColumn.totalScore).toList();
 }

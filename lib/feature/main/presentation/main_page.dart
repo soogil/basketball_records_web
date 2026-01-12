@@ -162,23 +162,23 @@ class MainPage extends ConsumerWidget {
               final players = ref.read(mainViewModelProvider).value?.players ?? [];
 
               onSave(DateTime dateTime, List<TeamInput> teams,
-                  List<PlayerModel> nonAttendantPlayers, bool isDouble) async {
+                  List<PlayerModel> nonAttendantPlayers) async {
                 final viewModel = ref.read(mainViewModelProvider.notifier);
                 final List<PlayerGameInput> playerInputs = teams
                     .expand((team) => team.players)
                     .toList();
 
-                if (isDouble) {
-                  for (PlayerGameInput playerInput in playerInputs) {
-                    if (playerInput.attendanceScore > 0) {
-                      playerInput.attendanceScore *= 2;
-                    }
-                    playerInput.winScoreController.text = '${playerInput.winScore * 2}';
-
-                    // print('${playerInput.playerName} '
-                    //     '${playerInput.attendanceScore} ${playerInput.winScore}');
-                  }
-                }
+                // if (isDouble) {
+                //   for (PlayerGameInput playerInput in playerInputs) {
+                //     if (playerInput.attendanceScore > 0) {
+                //       playerInput.attendanceScore *= 2;
+                //     }
+                //     playerInput.winScoreController.text = '${playerInput.winScore * 2}';
+                //
+                //     // print('${playerInput.playerName} '
+                //     //     '${playerInput.attendanceScore} ${playerInput.winScore}');
+                //   }
+                // }
 
                 final List<PlayerGameInput> absentInputs = nonAttendantPlayers
                     .map((player) => PlayerGameInput(
@@ -316,8 +316,13 @@ class MainPage extends ConsumerWidget {
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
     final viewModel = ref.watch(mainViewModelProvider.notifier);
 
+    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
+    final columns = (selectedSeason >= 2026)
+        ? PlayerColumn.currentYearColumns
+        : PlayerColumn.allColumns;
+
     return Row(
-      children: PlayerColumn.values.map((col) {
+      children: columns.map((col) {
         final isSorted = viewModel.sortColumn == col;
         final isRank = col == PlayerColumn.rank;
 
@@ -376,6 +381,11 @@ class MainPage extends ConsumerWidget {
     final bool isCurrentSeason = ref.watch(isCurrentSeasonProvider);
     final bool isEven = index.isEven;
 
+    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
+    final columns = (selectedSeason >= 2026)
+        ? PlayerColumn.currentYearColumns
+        : PlayerColumn.allColumns;
+
     return ListTile(
       contentPadding: EdgeInsets.all(0),
         minTileHeight: 50,
@@ -390,7 +400,7 @@ class MainPage extends ConsumerWidget {
         tileColor: isEven ? BRColors.greyDa : BRColors.whiteE8,
         title: Row(
             mainAxisSize: MainAxisSize.max,
-            children: PlayerColumn.values
+            children: columns
                 .map((col) => Expanded(
                     flex: col.flex,
                     child: Row(

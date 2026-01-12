@@ -16,7 +16,7 @@ class RecordAddPage extends ConsumerStatefulWidget {
   });
 
   final List<PlayerModel> allPlayers;
-  final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>, bool) onSave;
+  final Function(DateTime selectedDate, List<TeamInput>, List<PlayerModel>) onSave;
   final Function(DateTime date)? onRemove;
 
   @override
@@ -171,12 +171,12 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
           )
       ),
       actions: [
-        ToggleButton(
-            text: '점수 2배',
-            onPressed: (isClicked) {
-              _isDouble = isClicked;
-            }),
-        SizedBox(width: 10,),
+        // ToggleButton(
+        //     text: '점수 2배',
+        //     onPressed: (isClicked) {
+        //       _isDouble = isClicked;
+        //     }),
+        // SizedBox(width: 10,),
         if (_selectedDate != null && _isExistRecord) Container(
           margin: EdgeInsets.only(right: 30),
           height: 50,
@@ -387,8 +387,8 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
                 value: input.attendanceScore,
                 isExpanded: true,
                 items: [
-                  DropdownMenuItem(value: 10, child: Text("참석")),
-                  DropdownMenuItem(value: 5, child: Text("조퇴")),
+                  DropdownMenuItem(value: 15, child: Text("참석")),
+                  DropdownMenuItem(value: 10, child: Text("조퇴")),
                   DropdownMenuItem(value: -5, child: Text("노쇼")),
                 ],
                 onChanged: (v) {
@@ -500,7 +500,8 @@ class _RecordAddPageState extends ConsumerState<RecordAddPage> {
                     players: teams[i],
                   ),
             );
-            widget.onSave(_selectedDate!, teamInputs, availablePlayers, _isDouble);
+            // widget.onSave(_selectedDate!, teamInputs, availablePlayers, _isDouble);
+            widget.onSave(_selectedDate!, teamInputs, availablePlayers);
           } else {
             showDialog(
                 context: context,
@@ -548,7 +549,7 @@ class PlayerGameInput {
   final TextEditingController winScoreController;
   PlayerGameInput({
     required this.player,
-    this.attendanceScore = 10,
+    this.attendanceScore = 15,
   })  : totalGamesController = TextEditingController(text: '0'),
         winGamesController = TextEditingController(text: '0'),
         winScoreController = TextEditingController(text: '0');

@@ -69,4 +69,10 @@ enum PlayerRecordColumn {
 
   const PlayerRecordColumn(this.flex);
   final int flex;
+
+
+  static List<PlayerRecordColumn> get allColumns => values;
+
+  static List<PlayerRecordColumn> get currentYearColumns =>
+      values.where((column) => column != PlayerRecordColumn.winScore).toList();
 }
