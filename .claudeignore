@@ -1,0 +1,41 @@
+# 1. Flutter 빌드 및 캐시 파일 (절대 읽을 필요 없음)
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# 2. ⭐️ 자동 생성된 코드 (가장 중요)
+# 클로드는 원본 모델(sealed class)만 보면 됩니다. 생성된 코드를 읽게 두면 토큰이 엄청나게 낭비됩니다.
+**/*.g.dart
+**/*.freezed.dart
+**/*.worker.js
+
+# 3. 네이티브 종속성 및 빌드 파일
+# 네이티브 설정(Info.plist 등)은 읽어야 하지만, Pods나 빌드 결과물은 차단해야 합니다.
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+
+# 4. 에셋 및 미디어 (AI가 읽을 수 없는 바이너리)
+assets/
+images/
+fonts/
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.ttf
+
+# 5. 로그 파일
+*.log
+flutter_*.log
+
+# 6. IDE 및 환경 설정
+.idea/
+.vscode/
+*.iml
+
+# 7. 패키지 잠금 파일 (pubspec.yaml만 읽으면 충분함)
+pubspec.lock

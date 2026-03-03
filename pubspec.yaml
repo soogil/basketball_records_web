@@ -22,6 +22,7 @@ dependencies:
   flutter_sticky_header: ^0.8.0
   flutter_screenutil: ^5.9.3
   web: ^1.1.1
+  freezed_annotation: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -30,7 +31,6 @@ dev_dependencies:
   fake_cloud_firestore: ^3.0.0
   flutter_lints: ^5.0.0
   freezed: ^3.0.4
-  freezed_annotation: ^3.0.0
   riverpod_generator: ^2.6.5
   build_runner: ^2.4.14
   json_serializable: ^6.9.3

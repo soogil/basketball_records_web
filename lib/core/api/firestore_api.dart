@@ -1,13 +1,11 @@
-import 'package:flutter/foundation.dart';
-import 'package:iggys_point/feature/main/data/models/player_model.dart';
-import 'package:iggys_point/feature/record/data/models/record_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iggys_point/feature/record/presentation/record_add_page.dart';
+import 'package:iggys_point/models/player_model.dart';
+import 'package:iggys_point/models/record_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'firestore_api.g.dart';
-
 
 class FireStoreApi {
   FireStoreApi(this._firestore);
@@ -67,26 +65,20 @@ class FireStoreApi {
   }
 
   Future<QuerySnapshot<Map<String, dynamic>>> getPlayers() async {
-    final querySnapshot = await _firestore
-        .collection('players')
-        .get();
-
-    return querySnapshot;
+    return await _firestore.collection('players').get();
   }
 
-  Future<QuerySnapshot<Map<String, dynamic>>> getPlayersFromYear(String year) async {
-    final querySnapshot = await _firestore
+  Future<QuerySnapshot<Map<String, dynamic>>> getPlayersFromYear(
+      String year) async {
+    return await _firestore
         .collection('seasons')
         .doc(year)
         .collection('players')
         .get();
-
-    return querySnapshot;
   }
 
   Future<List<String>> getSeasons() async {
     final snapshot = await _firestore.collection('seasons').get();
-
     return snapshot.docs.map((doc) => doc.id).toList();
   }
 
@@ -97,36 +89,29 @@ class FireStoreApi {
         .get();
 
     if (!docSnapshot.exists) return [];
-
-
     final data = docSnapshot.data();
     if (data == null || !data.containsKey('records')) return [];
-
     return data['records'];
   }
 
   Future<List> getPlayerRecordsFromYear(String year, String playerId) async {
     final docSnapshot = await _firestore
-    .collection('seasons')
+        .collection('seasons')
         .doc(year)
         .collection('playerRecords')
         .doc(playerId)
         .get();
 
     if (!docSnapshot.exists) return [];
-
-
     final data = docSnapshot.data();
     if (data == null || !data.containsKey('records')) return [];
-
     return data['records'];
   }
 
   Future<void> addPlayer(String name) async {
-    final fireStore = _firestore;
-    final batch = fireStore.batch();
+    final batch = _firestore.batch();
     final playerRef = _firestore.collection('players').doc();
-    final playerRecordsRef = _firestore.collection('playerRecords').doc();
+    final playerRecordsRef = _firestore.collection('playerRecords').doc(playerRef.id);
     final player = PlayerModel(
       id: playerRef.id,
       name: name,
@@ -141,51 +126,54 @@ class FireStoreApi {
 
     batch.set(playerRef, player.toJson());
     batch.set(playerRecordsRef, {'records': []});
-
     await batch.commit();
   }
 
   Future<void> removePlayer(String playerId) async {
-    final fireStore = _firestore;
-    final batch = fireStore.batch();
-
-    final playerRef = fireStore.collection('players').doc(playerId);
-    final playerRecordsRef = fireStore.collection('playerRecords').doc(playerId);
-
-    batch.delete(playerRef);
-    batch.delete(playerRecordsRef);
-
+    final batch = _firestore.batch();
+    batch.delete(_firestore.collection('players').doc(playerId));
+    batch.delete(_firestore.collection('playerRecords').doc(playerId));
     await batch.commit();
   }
 
+  /// 선수별 기록을 병렬 조회한 뒤 batch 업데이트로 저장.
+  /// 기존 직렬 읽기(for loop await)를 Future.wait로 병렬화하여 성능 개선.
   Future<void> updatePlayerRecords(
-      String recordDate,
-      List<PlayerGameInput> playerInputs) async {
-    final fireStore = _firestore;
-    final batch = fireStore.batch();
+    String recordDate,
+    List<PlayerGameInput> playerInputs,
+  ) async {
+    final batch = _firestore.batch();
 
-    for (final playerInput in playerInputs) {
-      final playerId = playerInput.playerId;
-      final recordRef = fireStore.collection('playerRecords').doc(playerId);
-      final playerRef = fireStore.collection('players').doc(playerId);
+    // 1. 모든 선수 기록 병렬 조회
+    final recordRefs = playerInputs
+        .map((p) => _firestore.collection('playerRecords').doc(p.playerId))
+        .toList();
+
+    final snapshots = await Future.wait(recordRefs.map((ref) => ref.get()));
+
+    // 2. 각 선수 처리
+    for (int i = 0; i < playerInputs.length; i++) {
+      final playerInput = playerInputs[i];
+      final recordRef = recordRefs[i];
+      final playerRef =
+          _firestore.collection('players').doc(playerInput.playerId);
       final int attendanceScore = playerInput.attendanceScore;
       final int winScore = playerInput.winScore;
 
-      // 1. RecordModel 생성 (각 선수의 해당 날짜 기록)
       final recordModel = RecordModel(
         date: recordDate,
         attendanceScore: attendanceScore,
         winScore: winScore,
         winningGames: playerInput.winGames.toDouble(),
-        totalGames: playerInput.totalGames.toInt(),
+        totalGames: playerInput.totalGames,
       );
 
-      // 2. 기존 기록 읽기 (해당 선수)
-      final snapshot = await recordRef.get();
       List<dynamic> playerRecords = [];
+      final snapshot = snapshots[i];
       if (snapshot.exists && snapshot.data() != null) {
         playerRecords = List.from(snapshot.data()!['records'] ?? []);
       }
+
       final idx = playerRecords.indexWhere((r) => r['date'] == recordDate);
       if (idx >= 0) {
         playerRecords[idx] = recordModel.toJson();
@@ -193,7 +181,6 @@ class FireStoreApi {
         playerRecords.add(recordModel.toJson());
       }
 
-      // 3. batch로 기록/누적치 갱신 추가
       batch.set(recordRef, {'records': playerRecords});
       batch.update(playerRef, {
         'totalScore': FieldValue.increment(attendanceScore + winScore),
@@ -203,12 +190,12 @@ class FireStoreApi {
         'seasonTotalGames': FieldValue.increment(playerInput.totalGames),
         'accumulatedScore': FieldValue.increment(attendanceScore + winScore),
         'scoreAchieved': _isMilestonePassed(
-            playerInput.player.accumulatedScore,
-            playerInput.player.accumulatedScore + attendanceScore + winScore),
+          playerInput.player.accumulatedScore,
+          playerInput.player.accumulatedScore + attendanceScore + winScore,
+        ),
       });
     }
 
-    // 4. batch 커밋: 한 명이라도 실패시 모두 롤백
     try {
       await batch.commit();
     } catch (e) {
@@ -218,36 +205,29 @@ class FireStoreApi {
   }
 
   bool _isMilestonePassed(int before, int after, {int milestone = 300}) {
-    int beforeSection = before ~/ milestone;
-    int afterSection = after ~/ milestone;
-    return beforeSection < afterSection;
+    return (before ~/ milestone) < (after ~/ milestone);
   }
 
   Future<void> removeRecordFromDate(String targetDate) async {
-    final firestore = _firestore;
-    final playerRecordsRef = firestore.collection('playerRecords');
-    final playersRef = firestore.collection('players');
+    final playerRecordsRef = _firestore.collection('playerRecords');
+    final playersRef = _firestore.collection('players');
 
     final snapshot = await playerRecordsRef.get();
-    final batch = firestore.batch();
+    final batch = _firestore.batch();
 
     for (final doc in snapshot.docs) {
       final playerId = doc.id;
       final data = doc.data();
       List<dynamic> records = List.from(data['records'] ?? []);
 
-      // 삭제 대상 기록 추출
-      final toRemove = records.where((r) => r['date'] == targetDate).toList();
-
-      // 해당 날짜 기록만 삭제
+      final toRemove =
+          records.where((r) => r['date'] == targetDate).toList();
       records.removeWhere((r) => r['date'] == targetDate);
 
-      // batch로 playerRecords 갱신
       batch.set(doc.reference, {'records': records});
 
-      // 만약 해당 날짜 기록이 존재하면 players의 누적값에서 빼기
       if (toRemove.isNotEmpty) {
-        final r = toRemove.first; // 한 날짜에 하나만 있다고 가정
+        final r = toRemove.first;
         batch.update(playersRef.doc(playerId), {
           'totalScore': FieldValue.increment(-(r['attendanceScore'] ?? 0) - (r['winScore'] ?? 0)),
           'attendanceScore': FieldValue.increment(-(r['attendanceScore'] ?? 0)),
@@ -264,93 +244,77 @@ class FireStoreApi {
   }
 
   Future<bool> hasAnyRealRecordOnDate(String date) async {
-    final playerRecordsRef = _firestore.collection('playerRecords');
-    final snapshot = await playerRecordsRef.get();
+    final snapshot =
+        await _firestore.collection('playerRecords').get();
 
     for (final doc in snapshot.docs) {
       final records = List.from(doc.data()['records'] ?? []);
       for (final record in records) {
         if (record['date'] == date) {
-          // 하나라도 0이 아니면 true
           final attendance = record['attendanceScore'] ?? 0;
           final score = record['winScore'] ?? 0;
           final win = record['winningGames'] ?? 0;
           final games = record['totalGames'] ?? 0;
           if (attendance != 0 || score != 0 || win != 0 || games != 0) {
-            return true; // 하나라도 0이 아니면 "기록 있음"
+            return true;
           }
         }
       }
     }
-    return false; // 모두 0이거나, date자체가 없는 경우
+    return false;
   }
 
-  /// 시즌 마감 & 초기화 함수
-  /// 1. 현재 players, playerRecords 데이터를 seasons/{seasonName}/... 으로 복사
-  /// 2. 현재 players의 시즌 점수(승점, 게임수 등)를 0으로 초기화 (누적 점수는 유지)
-  /// 3. 현재 playerRecords의 기록을 모두 삭제
   Future<void> archiveAndResetSeason(String seasonName) async {
-    final firestore = _firestore;
-    final batch = firestore.batch();
+    final batch = _firestore.batch();
 
-    // 1. 현재 데이터 모두 가져오기
-    final playersSnapshot = await firestore.collection('players').get();
-    final recordsSnapshot = await firestore.collection('playerRecords').get();
+    final playersSnapshot =
+        await _firestore.collection('players').get();
+    final recordsSnapshot =
+        await _firestore.collection('playerRecords').get();
 
-    // print('시즌 마감 시작: $seasonName (플레이어 ${playersSnapshot.size}명 처리 중...)');
-
-    // 2. 플레이어 데이터 처리
     for (var doc in playersSnapshot.docs) {
       final data = doc.data();
       final playerId = doc.id;
 
-      // [백업] seasons/2025/players/문서ID 로 복사
-      final archiveRef = firestore
+      final archiveRef = _firestore
           .collection('seasons')
           .doc(seasonName)
           .collection('players')
           .doc(playerId);
       batch.set(archiveRef, data);
 
-      // [초기화] 기존 players 컬렉션의 시즌 데이터만 0으로 리셋
-      final playerRef = firestore.collection('players').doc(playerId);
+      final playerRef = _firestore.collection('players').doc(playerId);
       batch.update(playerRef, {
-        'totalScore': 0,        // 총점 초기화
-        'attendanceScore': 0,   // 출석 점수 초기화
-        'winScore': 0,          // 승리 점수 초기화
-        'seasonTotalGames': 0,  // 시즌 경기 수 초기화
-        'seasonTotalWins': 0.0, // 시즌 승리 수 초기화
-        // 'accumulatedScore': ... // 이 줄이 없으므로 누적 점수는 그대로 유지됩니다!
-        'scoreAchieved': false, // (선택) 달성 여부 초기화
+        'totalScore': 0,
+        'attendanceScore': 0,
+        'winScore': 0,
+        'seasonTotalGames': 0,
+        'seasonTotalWins': 0.0,
+        'scoreAchieved': false,
       });
     }
 
-    // 3. 상세 기록(Record) 데이터 처리
     for (var doc in recordsSnapshot.docs) {
       final data = doc.data();
       final playerId = doc.id;
 
-      // [백업] seasons/2025/playerRecords/id 해당년도로 복사
-      final archiveRecordRef = firestore
+      final archiveRecordRef = _firestore
           .collection('seasons')
           .doc(seasonName)
           .collection('playerRecords')
           .doc(playerId);
       batch.set(archiveRecordRef, data);
 
-      // [초기화] 기존 기록 리스트 비우기
-      final recordRef = firestore.collection('playerRecords').doc(playerId);
+      final recordRef =
+          _firestore.collection('playerRecords').doc(playerId);
       batch.set(recordRef, {'records': []});
     }
 
-    // 4. 일괄 실행 (이때 실제 DB에 반영됨)
     await batch.commit();
   }
 
   bool isMilestonePassed(int before, int after, {int milestone = 300}) {
-    final beforeSection = before ~/ milestone;
-    final afterSection = after ~/ milestone;
-    return beforeSection < afterSection;
+    return (before ~/ milestone) < (after ~/ milestone);
   }
 }
 
