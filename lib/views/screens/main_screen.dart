@@ -1,6 +1,8 @@
 import 'dart:js_interop';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/core/router/app_pages.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:iggys_point/core/utils.dart';
@@ -10,7 +12,6 @@ import 'package:iggys_point/presenters/main_presenter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:go_router/go_router.dart';
 import 'package:web/web.dart' as web;
@@ -23,100 +24,81 @@ final isMobileProvider = Provider.family<bool, BuildContext>((ref, context) {
   return MediaQuery.of(context).size.width < 600;
 });
 
-class MainScreen extends ConsumerStatefulWidget {
+class MainScreen extends HookConsumerWidget {
   const MainScreen({super.key});
 
   @override
-  ConsumerState<MainScreen> createState() => _MainScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final captureKey = useMemoized(() => GlobalKey());
+    final isCapturingState = useState<bool>(false);
+    final captureState = useState<MainState?>(null);
 
-class _MainScreenState extends ConsumerState<MainScreen> {
-  final GlobalKey _captureKey = GlobalKey();
-  bool _isCapturing = false;
-  MainState? _captureState;
+    Future<void> captureFullList(MainState state) async {
+      isCapturingState.value = true;
+      captureState.value = state;
 
-  Future<void> _captureFullList(MainState state) async {
-    setState(() {
-      _isCapturing = true;
-      _captureState = state;
-    });
+      await WidgetsBinding.instance.endOfFrame;
+      await Future.delayed(const Duration(milliseconds: 80));
 
-    await WidgetsBinding.instance.endOfFrame;
-    await Future.delayed(const Duration(milliseconds: 80));
+      try {
+        final boundary = captureKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+        if (boundary == null) return;
 
-    try {
-      final boundary = _captureKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) return;
+        final image = await boundary.toImage(pixelRatio: 2.0);
+        final byteData =
+            await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData == null) return;
 
-      final image = await boundary.toImage(pixelRatio: 2.0);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-
-      final bytes = Uint8List.view(byteData.buffer);
-      final blob = web.Blob(
-        [bytes.toJS].toJS,
-        web.BlobPropertyBag(type: 'image/png'),
-      );
-      final url = web.URL.createObjectURL(blob);
-      final anchor =
-          web.document.createElement('a') as web.HTMLAnchorElement;
-      anchor.href = url;
-      anchor.download =
-          '이기스포인트_${ref.read(selectedSeasonProvider)}.png';
-      web.document.body!.append(anchor);
-      anchor.click();
-      anchor.remove();
-      web.URL.revokeObjectURL(url);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCapturing = false;
-          _captureState = null;
-        });
+        final bytes = Uint8List.view(byteData.buffer);
+        final blob = web.Blob(
+          [bytes.toJS].toJS,
+          web.BlobPropertyBag(type: 'image/png'),
+        );
+        final url = web.URL.createObjectURL(blob);
+        final anchor =
+            web.document.createElement('a') as web.HTMLAnchorElement;
+        anchor.href = url;
+        anchor.download =
+            '이기스포인트_${ref.read(selectedSeasonProvider)}.png';
+        web.document.body!.append(anchor);
+        anchor.click();
+        anchor.remove();
+        web.URL.revokeObjectURL(url);
+      } finally {
+        isCapturingState.value = false;
+        captureState.value = null;
       }
     }
-  }
 
-  bool _handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent &&
-        HardwareKeyboard.instance.isControlPressed &&
-        HardwareKeyboard.instance.isShiftPressed &&
-        event.logicalKey == LogicalKeyboardKey.keyA) {
-      ref.read(_adminModeProvider.notifier).state = true;
-      return true;
+    bool handleKeyEvent(KeyEvent event) {
+      if (event is KeyDownEvent &&
+          HardwareKeyboard.instance.isControlPressed &&
+          HardwareKeyboard.instance.isShiftPressed &&
+          event.logicalKey == LogicalKeyboardKey.keyA) {
+        ref.read(_adminModeProvider.notifier).state = true;
+        return true;
+      }
+      return false;
     }
-    return false;
-  }
 
-  @override
-  void initState() {
-    super.initState();
-    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-  }
+    useEffect(() {
+      HardwareKeyboard.instance.addHandler(handleKeyEvent);
+      return () => HardwareKeyboard.instance.removeHandler(handleKeyEvent);
+    }, []);
 
-  @override
-  void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    super.dispose();
-  }
-
-  Future<void> deleteAllCookies() async {
-    final cookies = web.document.cookie.split(';');
-    for (var cookie in cookies) {
-      final eqPos = cookie.indexOf('=');
-      final name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
-      web.document.cookie =
-          '$name=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+    Future<void> deleteAllCookies() async {
+      final cookies = web.document.cookie.split(';');
+      for (var cookie in cookies) {
+        final eqPos = cookie.indexOf('=');
+        final name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+        web.document.cookie =
+            '$name=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+      }
+      web.window.location.reload();
     }
-    web.window.location.reload();
-  }
 
-  @override
-  Widget build(BuildContext context) {
     final presenterState = ref.watch(mainPresenterProvider);
-
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -126,27 +108,48 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             onRefresh: deleteAllCookies,
             child: presenterState.when(
               skipLoadingOnReload: true,
-              data: (data) => _recordView(context, data),
+              data: (state) => CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  _appBar(
+                    context,
+                    ref,
+                    state,
+                    isCapturingState.value,
+                    captureFullList,
+                  ),
+                  SliverStickyHeader(
+                    header: _buildHeader(context, ref),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate(
+                        state.players.asMap().entries
+                            .map((e) => _buildTableRow(context, ref, e.value, e.key))
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (error, stack) =>
                   Center(child: Text('에러 발생: $error')),
             ),
           ),
-          if (_isCapturing && _captureState != null)
+          if (isCapturingState.value && captureState.value != null)
             Positioned(
               left: -(screenWidth + 100),
               top: 0,
               width: screenWidth,
               child: RepaintBoundary(
-                key: _captureKey,
+                key: captureKey,
                 child: Material(
                   color: Colors.white,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildHeader(context, ref),
-                      ..._captureState!.players.asMap().entries.map(
+                      ...captureState.value!.players.asMap().entries.map(
                             (e) => _buildTableRow(
                                 context, ref, e.value, e.key),
                           ),
@@ -164,6 +167,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     BuildContext context,
     WidgetRef ref,
     MainState state,
+    bool isCapturing,
+    Future<void> Function(MainState) onCapture,
   ) {
     final bool adminMode = ref.watch(_adminModeProvider);
     final String selectedSeason = ref.watch(selectedSeasonProvider);
@@ -209,7 +214,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           : [
             IconButton(
               tooltip: '전체 목록 이미지 저장',
-              icon: _isCapturing
+              icon: isCapturing
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -217,7 +222,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                           color: Colors.white, strokeWidth: 2),
                     )
                   : const Icon(Icons.camera_alt, color: Colors.white),
-              onPressed: _isCapturing ? null : () => _captureFullList(state),
+              onPressed: isCapturing ? null : () => onCapture(state),
             ),
             ...[
               OutlinedButton(
@@ -332,25 +337,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _recordView(BuildContext context, MainState state) {
-    return CustomScrollView(
-      physics: const ClampingScrollPhysics(),
-      slivers: [
-        _appBar(context, ref, state),
-        SliverStickyHeader(
-          header: _buildHeader(context, ref),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate(
-              state.players.asMap().entries
-                  .map((e) => _buildTableRow(context, ref, e.value, e.key))
-                  .toList(),
-            ),
-          ),
-        ),
-      ],
     );
   }
 

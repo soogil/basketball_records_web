@@ -3,7 +3,7 @@ import 'package:iggys_point/models/player_model.dart';
 import 'package:iggys_point/views/screens/main_screen.dart';
 import 'package:iggys_point/views/screens/player_detail_screen.dart';
 import 'package:iggys_point/views/screens/record_add_screen.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 

@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/models/player_model.dart';
 import 'package:iggys_point/presenters/contracts/main_contract.dart';
 import 'package:iggys_point/repositories/player_repository.dart';

@@ -7,7 +7,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/core/api/firestore_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 

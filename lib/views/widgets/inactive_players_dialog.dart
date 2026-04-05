@@ -1,68 +1,58 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/models/player_model.dart';
 import 'package:iggys_point/presenters/main_presenter.dart';
 
-class InactivePlayersDialog extends ConsumerStatefulWidget {
+class InactivePlayersDialog extends HookConsumerWidget {
   const InactivePlayersDialog({super.key, required this.onRestored});
   final VoidCallback onRestored;
 
   @override
-  ConsumerState<InactivePlayersDialog> createState() =>
-      _InactivePlayersDialogState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playersState = useState<List<PlayerModel>?>(null);
+    final loadingState = useState<bool>(true);
 
-class _InactivePlayersDialogState
-    extends ConsumerState<InactivePlayersDialog> {
-  List<PlayerModel>? _players;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPlayers();
-  }
-
-  Future<void> _loadPlayers() async {
-    final players =
-        await ref.read(mainPresenterProvider.notifier).getInactivePlayers();
-    if (mounted) {
-      setState(() {
-        _players = players;
-        _loading = false;
-      });
+    Future<void> loadPlayers() async {
+      loadingState.value = true;
+      final players =
+          await ref.read(mainPresenterProvider.notifier).getInactivePlayers();
+      playersState.value = players;
+      loadingState.value = false;
     }
-  }
 
-  Future<void> _restore(String playerId) async {
-    await ref.read(mainPresenterProvider.notifier).restorePlayer(playerId);
-    widget.onRestored();
-    await _loadPlayers();
-  }
+    useEffect(() {
+      loadPlayers();
+      return null;
+    }, const []);
 
-  @override
-  Widget build(BuildContext context) {
+    Future<void> restore(String playerId) async {
+      await ref.read(mainPresenterProvider.notifier).restorePlayer(playerId);
+      onRestored();
+      await loadPlayers();
+    }
+
     return AlertDialog(
       title: const Text('휴면 선수 목록'),
-      content: _loading
+      content: loadingState.value
           ? const SizedBox(
               height: 100,
               child: Center(child: CircularProgressIndicator()),
             )
-          : _players!.isEmpty
+          : playersState.value!.isEmpty
               ? const Text('휴면 선수가 없습니다.')
               : SizedBox(
                   width: 320,
                   child: ListView.separated(
                     shrinkWrap: true,
-                    itemCount: _players!.length,
+                    itemCount: playersState.value!.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final player = _players![index];
+                      final player = playersState.value![index];
                       return ListTile(
                         title: Text(player.name),
                         trailing: TextButton(
-                          onPressed: () => _restore(player.id),
+                          onPressed: () => restore(player.id),
                           child: const Text('복귀'),
                         ),
                       );

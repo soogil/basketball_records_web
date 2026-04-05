@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/core/api/firestore_api.dart';
 import 'package:iggys_point/models/player_model.dart';
 import 'package:iggys_point/models/record_model.dart';

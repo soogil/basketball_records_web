@@ -1,3 +1,5 @@
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:iggys_point/core/utils.dart';
 import 'package:iggys_point/models/record_model.dart';
@@ -6,14 +8,13 @@ import 'package:iggys_point/presenters/main_presenter.dart';
 import 'package:iggys_point/presenters/player_detail_presenter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 
 enum _ArchiveAction { archive, delete }
 
 final _adminModeProvider = StateProvider.autoDispose<bool>((ref) => false);
 
-class PlayerDetailScreen extends ConsumerStatefulWidget {
+class PlayerDetailScreen extends HookConsumerWidget {
   const PlayerDetailScreen({
     super.key,
     required this.playerId,
@@ -24,38 +25,23 @@ class PlayerDetailScreen extends ConsumerStatefulWidget {
   final String playerName;
 
   @override
-  ConsumerState<PlayerDetailScreen> createState() => _PlayerDetailScreenState();
-}
-
-class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
-  String get playerId => widget.playerId;
-  String get playerName => widget.playerName;
-
-  bool _handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent &&
-        HardwareKeyboard.instance.isControlPressed &&
-        HardwareKeyboard.instance.isShiftPressed &&
-        event.logicalKey == LogicalKeyboardKey.keyA) {
-      ref.read(_adminModeProvider.notifier).state = true;
-      return true;
+  Widget build(BuildContext context, WidgetRef ref) {
+    bool handleKeyEvent(KeyEvent event) {
+      if (event is KeyDownEvent &&
+          HardwareKeyboard.instance.isControlPressed &&
+          HardwareKeyboard.instance.isShiftPressed &&
+          event.logicalKey == LogicalKeyboardKey.keyA) {
+        ref.read(_adminModeProvider.notifier).state = true;
+        return true;
+      }
+      return false;
     }
-    return false;
-  }
 
-  @override
-  void initState() {
-    super.initState();
-    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-  }
+    useEffect(() {
+      HardwareKeyboard.instance.addHandler(handleKeyEvent);
+      return () => HardwareKeyboard.instance.removeHandler(handleKeyEvent);
+    }, []);
 
-  @override
-  void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final presenterState =
         ref.watch(playerDetailPresenterProvider(playerId));
 
@@ -348,4 +334,3 @@ class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
     );
   }
 }
-
