@@ -15,13 +15,8 @@ import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:go_router/go_router.dart';
 import 'package:web/web.dart' as web;
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 누적점수 표시 모드 전환
-//   tierBadge  → A안: 티어 뱃지
-//   progressBar → D안: 진행 바
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-enum _ScoreDisplayMode { tierBadge, progressBar }
-const _kScoreDisplayMode = _ScoreDisplayMode.progressBar;
+import 'package:iggys_point/views/widgets/inactive_players_dialog.dart';
+import 'package:iggys_point/views/widgets/player_table_cells.dart';
 
 final _adminModeProvider = StateProvider<bool>((ref) => false);
 final isMobileProvider = Provider.family<bool, BuildContext>((ref, context) {
@@ -288,7 +283,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (_) => _InactivePlayersDialog(
+                    builder: (_) => InactivePlayersDialog(
                       onRestored: () => ref.invalidate(mainPresenterProvider),
                     ),
                   );
@@ -457,7 +452,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               (col) => Expanded(
                 flex: col.flex,
                 child: col == PlayerColumn.accumulatedScore
-                    ? _buildAccumulatedCell(context, player, isCurrentSeason)
+                    ? PlayerAccumulatedCell(
+                        player: player,
+                        isCurrentSeason: isCurrentSeason,
+                        mode: ScoreDisplayMode.progressBar,
+                      )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -476,226 +475,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             )
             .toList(),
       ),
-    );
-  }
-}
-
-/// 휴면 선수 목록 다이얼로그
-// ─────────────────────────────────────────────
-// 누적점수 표시 셀 (모드에 따라 분기)
-// ─────────────────────────────────────────────
-
-Widget _buildAccumulatedCell(
-  BuildContext context,
-  PlayerModel player,
-  bool isCurrentSeason,
-) {
-  switch (_kScoreDisplayMode) {
-    case _ScoreDisplayMode.tierBadge:
-      return _TierBadgeCell(player: player, isCurrentSeason: isCurrentSeason);
-    case _ScoreDisplayMode.progressBar:
-      return _ProgressBarCell(player: player, isCurrentSeason: isCurrentSeason);
-  }
-}
-
-/// A안: 티어 뱃지
-/// 점수 텍스트 + 아래에 티어 뱃지 칩 표시
-class _TierBadgeCell extends StatelessWidget {
-  const _TierBadgeCell({required this.player, required this.isCurrentSeason});
-  final PlayerModel player;
-  final bool isCurrentSeason;
-
-  @override
-  Widget build(BuildContext context) {
-    final tier = player.tier;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${player.accumulatedScore}점',
-              style: TextStyle(
-                fontSize: 16.0.responsiveFontSize(context, minFontSize: 12),
-                fontWeight: FontWeight.bold,
-                color: tier?.badgeColor ?? BRColors.black,
-              ),
-            ),
-            if (player.scoreAchieved && isCurrentSeason) ...[
-              const SizedBox(width: 3),
-              const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
-            ],
-          ],
-        ),
-        if (tier != null) ...[
-          const SizedBox(height: 2),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: tier.badgeColor,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              tier.name,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10.0.responsiveFontSize(context, minFontSize: 8),
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// D안: 진행 바
-/// 현재점수 / 다음마일스톤 + 구간 내 진행도 바 (1800 이후로도 순환)
-class _ProgressBarCell extends StatelessWidget {
-  const _ProgressBarCell({required this.player, required this.isCurrentSeason});
-  final PlayerModel player;
-  final bool isCurrentSeason;
-
-  @override
-  Widget build(BuildContext context) {
-    final barColor = player.progressBarColor;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '${player.accumulatedScore}',
-                style: TextStyle(
-                  fontSize: 14.0.responsiveFontSize(context, minFontSize: 11),
-                  fontWeight: FontWeight.bold,
-                  color: barColor,
-                ),
-              ),
-              Text(
-                ' / ${player.nextMilestone}',
-                style: TextStyle(
-                  fontSize: 11.0.responsiveFontSize(context, minFontSize: 9),
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              if (player.scoreAchieved && isCurrentSeason) ...[
-                const SizedBox(width: 3),
-                const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
-              ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                children: [
-                  Container(
-                    height: 6,
-                    width: constraints.maxWidth,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  Container(
-                    height: 6,
-                    width: constraints.maxWidth * player.milestoneProgress,
-                    decoration: BoxDecoration(
-                      color: barColor,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InactivePlayersDialog extends ConsumerStatefulWidget {
-  const _InactivePlayersDialog({required this.onRestored});
-  final VoidCallback onRestored;
-
-  @override
-  ConsumerState<_InactivePlayersDialog> createState() =>
-      _InactivePlayersDialogState();
-}
-
-class _InactivePlayersDialogState
-    extends ConsumerState<_InactivePlayersDialog> {
-  List<PlayerModel>? _players;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPlayers();
-  }
-
-  Future<void> _loadPlayers() async {
-    final players =
-        await ref.read(mainPresenterProvider.notifier).getInactivePlayers();
-    if (mounted) {
-      setState(() {
-        _players = players;
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _restore(String playerId) async {
-    await ref.read(mainPresenterProvider.notifier).restorePlayer(playerId);
-    widget.onRestored();
-    await _loadPlayers();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('휴면 선수 목록'),
-      content: _loading
-          ? const SizedBox(
-              height: 100,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          : _players!.isEmpty
-              ? const Text('휴면 선수가 없습니다.')
-              : SizedBox(
-                  width: 320,
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: _players!.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final player = _players![index];
-                      return ListTile(
-                        title: Text(player.name),
-                        trailing: TextButton(
-                          onPressed: () => _restore(player.id),
-                          child: const Text('복귀'),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('닫기'),
-        ),
-      ],
     );
   }
 }
