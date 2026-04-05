@@ -38,7 +38,3 @@ dev_dependencies:
 flutter:
 
   uses-material-design: true
-  assets:
-#    - assets/credentials.json
-    - assets/players_backup.json
-    - assets/player_records_backup.json

@@ -50,3 +50,7 @@ assets/credentials.json
 
 # FVM Version Cache
 .fvm/
+
+# Node.js (GitHub Actions / functions)
+functions/node_modules/
+functions/package-lock.json

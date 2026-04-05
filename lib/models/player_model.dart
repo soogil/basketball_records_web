@@ -150,6 +150,95 @@ extension PlayerModelPresentation on PlayerModel {
       seasonTotalGames == 0 ? 0 : (seasonTotalWins / seasonTotalGames) * 100;
 }
 
+/// 누적 점수 티어 정보
+class TierInfo {
+  const TierInfo({
+    required this.name,
+    required this.badgeColor,
+    required this.barColor,
+  });
+  final String name;
+  final Color badgeColor;  // 뱃지 배경색
+  final Color barColor;    // 진행 바 색상
+}
+
+extension PlayerModelTier on PlayerModel {
+  static const int _milestone = 300;
+
+  /// 현재 티어 (300점 미만이면 null)
+  TierInfo? get tier {
+    if (accumulatedScore >= 1800) {
+      return const TierInfo(
+        name: 'MASTER',
+        badgeColor: Color(0xFF6A0DAD),
+        barColor: Color(0xFF9C27B0),
+      );
+    }
+    if (accumulatedScore >= 1500) {
+      return const TierInfo(
+        name: 'DIAMOND',
+        badgeColor: Color(0xFF1565C0),
+        barColor: Color(0xFF42A5F5),
+      );
+    }
+    if (accumulatedScore >= 1200) {
+      return const TierInfo(
+        name: 'PLATINUM',
+        badgeColor: Color(0xFF00695C),
+        barColor: Color(0xFF26A69A),
+      );
+    }
+    if (accumulatedScore >= 900) {
+      return const TierInfo(
+        name: 'GOLD',
+        badgeColor: Color(0xFFF57F17),
+        barColor: Color(0xFFFFCA28),
+      );
+    }
+    if (accumulatedScore >= 600) {
+      return const TierInfo(
+        name: 'SILVER',
+        badgeColor: Color(0xFF757575),
+        barColor: Color(0xFFBDBDBD),
+      );
+    }
+    if (accumulatedScore >= 300) {
+      return const TierInfo(
+        name: 'BRONZE',
+        badgeColor: Color(0xFF6D4C41),
+        barColor: Color(0xFFBCAAA4),
+      );
+    }
+    return null;
+  }
+
+  /// 다음 마일스톤 점수 (1800 이후로도 계속 300씩 증가)
+  int get nextMilestone =>
+      ((accumulatedScore ~/ _milestone) + 1) * _milestone;
+
+  /// 현재 구간 내 진행도 (0.0 ~ 1.0) — 1800 이후로도 순환
+  double get milestoneProgress =>
+      (accumulatedScore % _milestone) / _milestone.toDouble();
+
+  /// 현재 구간 시작 점수
+  int get currentMilestone => (accumulatedScore ~/ _milestone) * _milestone;
+
+  /// 진행 바 색상 — 구간마다 순환, 0~299 구간도 색상 있음
+  Color get progressBarColor {
+    const colors = [
+      Color(0xFF66BB6A), // 0~299    초록
+      Color(0xFFBCAAA4), // 300~599  브론즈
+      Color(0xFFBDBDBD), // 600~899  실버
+      Color(0xFFFFCA28), // 900~1199 골드
+      Color(0xFF26A69A), // 1200~1499 플래티넘
+      Color(0xFF42A5F5), // 1500~1799 다이아
+      Color(0xFFAB47BC), // 1800~    마스터 (이후 순환)
+    ];
+    final idx = (accumulatedScore ~/ _milestone).clamp(0, colors.length - 1);
+    return colors[idx];
+  }
+}
+
 extension PlayerColumnExtension on PlayerColumn {
   String get label {
     switch (this) {

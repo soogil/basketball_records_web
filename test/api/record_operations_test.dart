@@ -267,6 +267,60 @@ void main() {
       expect((recordDoc.data()!['records'] as List).length, 1); // 다른 날짜 기록은 유지
     });
 
+    test('삭제 후 누적점수가 300 이상이면 scoreAchieved가 true를 유지한다', () async {
+      await _seedPlayer(fake, 'p1',
+          name: 'Star',
+          totalScore: 25,
+          attendanceScore: 15,
+          winScore: 10,
+          accumulatedScore: 350); // 삭제 후 325 → 여전히 300 이상
+
+      await fake.collection('playerRecords').doc('p1').set({
+        'records': [
+          {
+            'date': '2025-06-01',
+            'attendanceScore': 15,
+            'winScore': 10,
+            'winningGames': 2.0,
+            'totalGames': 4,
+          }
+        ]
+      });
+
+      await api.removeRecordFromDate('2025-06-01');
+
+      final playerDoc = await fake.collection('players').doc('p1').get();
+      expect(playerDoc.data()!['accumulatedScore'], 325);
+      expect(playerDoc.data()!['scoreAchieved'], true); // 300 이상 → 유지
+    });
+
+    test('삭제 후 누적점수가 300 미만이면 scoreAchieved가 false가 된다', () async {
+      await _seedPlayer(fake, 'p1',
+          name: 'Rookie',
+          totalScore: 25,
+          attendanceScore: 15,
+          winScore: 10,
+          accumulatedScore: 310); // 삭제 후 285 → 300 미만
+
+      await fake.collection('playerRecords').doc('p1').set({
+        'records': [
+          {
+            'date': '2025-06-01',
+            'attendanceScore': 15,
+            'winScore': 10,
+            'winningGames': 2.0,
+            'totalGames': 4,
+          }
+        ]
+      });
+
+      await api.removeRecordFromDate('2025-06-01');
+
+      final playerDoc = await fake.collection('players').doc('p1').get();
+      expect(playerDoc.data()!['accumulatedScore'], 285);
+      expect(playerDoc.data()!['scoreAchieved'], false); // 300 미만 → false
+    });
+
     test('여러 선수 중 해당 날짜 기록 있는 선수만 차감된다', () async {
       await _seedPlayer(fake, 'p1',
           name: 'A', totalScore: 25, accumulatedScore: 25);

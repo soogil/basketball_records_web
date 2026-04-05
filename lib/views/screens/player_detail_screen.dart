@@ -1,13 +1,11 @@
-import 'dart:async';
-
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:iggys_point/core/utils.dart';
 import 'package:iggys_point/models/record_model.dart';
 import 'package:iggys_point/presenters/contracts/player_detail_contract.dart';
 import 'package:iggys_point/presenters/main_presenter.dart';
 import 'package:iggys_point/presenters/player_detail_presenter.dart';
-import 'package:iggys_point/views/screens/main_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 
@@ -15,7 +13,7 @@ enum _ArchiveAction { archive, delete }
 
 final _adminModeProvider = StateProvider.autoDispose<bool>((ref) => false);
 
-class PlayerDetailScreen extends ConsumerWidget {
+class PlayerDetailScreen extends ConsumerStatefulWidget {
   const PlayerDetailScreen({
     super.key,
     required this.playerId,
@@ -26,7 +24,38 @@ class PlayerDetailScreen extends ConsumerWidget {
   final String playerName;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlayerDetailScreen> createState() => _PlayerDetailScreenState();
+}
+
+class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
+  String get playerId => widget.playerId;
+  String get playerName => widget.playerName;
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        HardwareKeyboard.instance.isControlPressed &&
+        HardwareKeyboard.instance.isShiftPressed &&
+        event.logicalKey == LogicalKeyboardKey.keyA) {
+      ref.read(_adminModeProvider.notifier).state = true;
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final presenterState =
         ref.watch(playerDetailPresenterProvider(playerId));
 
@@ -43,7 +72,6 @@ class PlayerDetailScreen extends ConsumerWidget {
 
   PreferredSizeWidget _appBar(BuildContext context, WidgetRef ref) {
     final adminMode = ref.watch(_adminModeProvider);
-    final isMobile = ref.watch(isMobileProvider(context));
 
     return AppBar(
       toolbarHeight: 70,
@@ -56,12 +84,6 @@ class PlayerDetailScreen extends ConsumerWidget {
           color: BRColors.white,
         ),
       ),
-      leading: isMobile
-          ? null
-          : _DetailAdminTriggerButton(
-              onActivate: () =>
-                  ref.read(_adminModeProvider.notifier).state = true,
-            ),
       actions: !adminMode
           ? []
           : [
@@ -327,46 +349,3 @@ class PlayerDetailScreen extends ConsumerWidget {
   }
 }
 
-/// 왼쪽 상단 투명 영역을 5초간 누르면 관리자 모드 활성화
-class _DetailAdminTriggerButton extends StatefulWidget {
-  const _DetailAdminTriggerButton({required this.onActivate});
-  final VoidCallback onActivate;
-
-  @override
-  State<_DetailAdminTriggerButton> createState() =>
-      _DetailAdminTriggerButtonState();
-}
-
-class _DetailAdminTriggerButtonState
-    extends State<_DetailAdminTriggerButton> {
-  Timer? _timer;
-
-  void _onTapDown(TapDownDetails _) {
-    _timer = Timer(const Duration(seconds: 5), widget.onActivate);
-  }
-
-  void _cancel() {
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: (_) => _cancel(),
-      onTapCancel: _cancel,
-      child: Container(
-        color: Colors.transparent,
-        width: 50,
-        height: 50,
-      ),
-    );
-  }
-}

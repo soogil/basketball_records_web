@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(fvm dart:*)",
-      "Bash(fvm flutter:*)"
+      "Bash(fvm flutter:*)",
+      "Bash(cd \"/c/Users/soogil/Desktop/flutter_project/basketball_records_app\" && firebase deploy --only hosting 2>&1)",
+      "Bash(which npx 2>&1 && npx firebase --version 2>&1)",
+      "Bash(cmd //c \"where firebase\" 2>&1)",
+      "Bash(cd \"/c/Users/soogil/Desktop/flutter_project/basketball_records_app\" && \"/c/Users/soogil/AppData/Roaming/npm/firebase\" deploy --only hosting 2>&1)",
+      "Bash(firebase --version)",
+      "Bash(firebase deploy:*)",
+      "Bash(npm install:*)",
+      "Bash(node archive_inactive_players.js)"
     ]
   }
 }

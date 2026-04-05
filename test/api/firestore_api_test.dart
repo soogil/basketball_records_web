@@ -61,6 +61,19 @@ void main() {
       expect(data['status'], 'active');
     });
 
+    test('addPlayer: 동일 이름 등록 시 Exception을 던진다', () async {
+      await api.addPlayer('Jordan');
+      expect(() => api.addPlayer('Jordan'), throwsException);
+    });
+
+    test('addPlayer: 휴면 선수와 같은 이름 등록 시 Exception을 던진다', () async {
+      await api.addPlayer('Bird');
+      final snap = await fake.collection('players').get();
+      await fake.collection('players').doc(snap.docs.first.id)
+          .update({'status': 'inactive'});
+      expect(() => api.addPlayer('Bird'), throwsException);
+    });
+
     test('removePlayer: players와 playerRecords가 같이 삭제된다', () async {
       await api.addPlayer('Curry');
 

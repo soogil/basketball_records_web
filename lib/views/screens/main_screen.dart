@@ -1,5 +1,6 @@
-import 'dart:async';
-
+import 'dart:js_interop';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:iggys_point/core/router/app_pages.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:iggys_point/core/utils.dart';
@@ -7,18 +8,104 @@ import 'package:iggys_point/models/player_model.dart';
 import 'package:iggys_point/presenters/contracts/main_contract.dart';
 import 'package:iggys_point/presenters/main_presenter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:go_router/go_router.dart';
 import 'package:web/web.dart' as web;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 누적점수 표시 모드 전환
+//   tierBadge  → A안: 티어 뱃지
+//   progressBar → D안: 진행 바
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+enum _ScoreDisplayMode { tierBadge, progressBar }
+const _kScoreDisplayMode = _ScoreDisplayMode.progressBar;
 
 final _adminModeProvider = StateProvider<bool>((ref) => false);
 final isMobileProvider = Provider.family<bool, BuildContext>((ref, context) {
   return MediaQuery.of(context).size.width < 600;
 });
 
-class MainScreen extends ConsumerWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
+
+  @override
+  ConsumerState<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends ConsumerState<MainScreen> {
+  final GlobalKey _captureKey = GlobalKey();
+  bool _isCapturing = false;
+  MainState? _captureState;
+
+  Future<void> _captureFullList(MainState state) async {
+    setState(() {
+      _isCapturing = true;
+      _captureState = state;
+    });
+
+    await WidgetsBinding.instance.endOfFrame;
+    await Future.delayed(const Duration(milliseconds: 80));
+
+    try {
+      final boundary = _captureKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      final bytes = Uint8List.view(byteData.buffer);
+      final blob = web.Blob(
+        [bytes.toJS].toJS,
+        web.BlobPropertyBag(type: 'image/png'),
+      );
+      final url = web.URL.createObjectURL(blob);
+      final anchor =
+          web.document.createElement('a') as web.HTMLAnchorElement;
+      anchor.href = url;
+      anchor.download =
+          '이기스포인트_${ref.read(selectedSeasonProvider)}.png';
+      web.document.body!.append(anchor);
+      anchor.click();
+      anchor.remove();
+      web.URL.revokeObjectURL(url);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+          _captureState = null;
+        });
+      }
+    }
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        HardwareKeyboard.instance.isControlPressed &&
+        HardwareKeyboard.instance.isShiftPressed &&
+        event.logicalKey == LogicalKeyboardKey.keyA) {
+      ref.read(_adminModeProvider.notifier).state = true;
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    super.dispose();
+  }
 
   Future<void> deleteAllCookies() async {
     final cookies = web.document.cookie.split(';');
@@ -32,15 +119,48 @@ class MainScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final presenterState = ref.watch(mainPresenterProvider);
 
-    return RefreshIndicator(
-      onRefresh: deleteAllCookies,
-      child: presenterState.when(
-        data: (data) => Scaffold(body: _recordView(context, ref, data)),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('에러 발생: $error')),
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: deleteAllCookies,
+            child: presenterState.when(
+              skipLoadingOnReload: true,
+              data: (data) => _recordView(context, data),
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (error, stack) =>
+                  Center(child: Text('에러 발생: $error')),
+            ),
+          ),
+          if (_isCapturing && _captureState != null)
+            Positioned(
+              left: -(screenWidth + 100),
+              top: 0,
+              width: screenWidth,
+              child: RepaintBoundary(
+                key: _captureKey,
+                child: Material(
+                  color: Colors.white,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(context, ref),
+                      ..._captureState!.players.asMap().entries.map(
+                            (e) => _buildTableRow(
+                                context, ref, e.value, e.key),
+                          ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -51,7 +171,6 @@ class MainScreen extends ConsumerWidget {
     MainState state,
   ) {
     final bool adminMode = ref.watch(_adminModeProvider);
-    final bool isMobile = ref.watch(isMobileProvider(context));
     final String selectedSeason = ref.watch(selectedSeasonProvider);
 
     return SliverAppBar(
@@ -90,25 +209,42 @@ class MainScreen extends ConsumerWidget {
           }).toList();
         },
       ),
-      leading: isMobile
-          ? null
-          : _AdminTriggerButton(
-              onActivate: () =>
-                  ref.read(_adminModeProvider.notifier).state = true,
-            ),
       actions: !adminMode
           ? []
           : [
+            IconButton(
+              tooltip: '전체 목록 이미지 저장',
+              icon: _isCapturing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.camera_alt, color: Colors.white),
+              onPressed: _isCapturing ? null : () => _captureFullList(state),
+            ),
+            ...[
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.white)),
                 onPressed: () async {
                   final String? name = await showPlayerNameDialog(context);
-                  if (name?.isNotEmpty ?? false) {
+                  if (!(name?.isNotEmpty ?? false)) return;
+                  try {
                     final presenter =
                         ref.read(mainPresenterProvider.notifier);
                     await presenter.addPlayer(name!);
                     ref.invalidate(mainPresenterProvider);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(e.toString().replaceFirst('Exception: ', '')),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 },
                 child: Text(
@@ -168,6 +304,7 @@ class MainScreen extends ConsumerWidget {
               ),
               const SizedBox(width: 50),
             ],
+          ],
     );
   }
 
@@ -203,19 +340,18 @@ class MainScreen extends ConsumerWidget {
     );
   }
 
-  Widget _recordView(BuildContext context, WidgetRef ref, MainState state) {
+  Widget _recordView(BuildContext context, MainState state) {
     return CustomScrollView(
+      physics: const ClampingScrollPhysics(),
       slivers: [
         _appBar(context, ref, state),
         SliverStickyHeader(
           header: _buildHeader(context, ref),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final player = state.players[index];
-                return _buildTableRow(context, ref, player, index);
-              },
-              childCount: state.players.length,
+            delegate: SliverChildListDelegate(
+              state.players.asMap().entries
+                  .map((e) => _buildTableRow(context, ref, e.value, e.key))
+                  .toList(),
             ),
           ),
         ),
@@ -320,34 +456,22 @@ class MainScreen extends ConsumerWidget {
             .map(
               (col) => Expanded(
                 flex: col.flex,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      player.valueByColumn(col, index: index + 1),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: col == PlayerColumn.accumulatedScore
-                            ? player.accumulatedScoreColor
-                            : BRColors.black,
-                        fontWeight: col == PlayerColumn.accumulatedScore
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 18.0
-                            .responsiveFontSize(context, minFontSize: 13),
-                      ),
-                    ),
-                    if (col == PlayerColumn.accumulatedScore &&
-                        player.scoreAchieved &&
-                        isCurrentSeason)
-                      const Row(
+                child: col == PlayerColumn.accumulatedScore
+                    ? _buildAccumulatedCell(context, player, isCurrentSeason)
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(width: 5),
-                          Icon(Icons.emoji_events, color: Colors.amber),
+                          Text(
+                            player.valueByColumn(col, index: index + 1),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: BRColors.black,
+                              fontSize: 18.0.responsiveFontSize(
+                                  context, minFontSize: 13),
+                            ),
+                          ),
                         ],
                       ),
-                  ],
-                ),
               ),
             )
             .toList(),
@@ -356,49 +480,150 @@ class MainScreen extends ConsumerWidget {
   }
 }
 
-/// 왼쪽 상단 투명 영역을 5초간 누르면 관리자 모드 활성화
-class _AdminTriggerButton extends StatefulWidget {
-  const _AdminTriggerButton({required this.onActivate});
-  final VoidCallback onActivate;
+/// 휴면 선수 목록 다이얼로그
+// ─────────────────────────────────────────────
+// 누적점수 표시 셀 (모드에 따라 분기)
+// ─────────────────────────────────────────────
 
-  @override
-  State<_AdminTriggerButton> createState() => _AdminTriggerButtonState();
+Widget _buildAccumulatedCell(
+  BuildContext context,
+  PlayerModel player,
+  bool isCurrentSeason,
+) {
+  switch (_kScoreDisplayMode) {
+    case _ScoreDisplayMode.tierBadge:
+      return _TierBadgeCell(player: player, isCurrentSeason: isCurrentSeason);
+    case _ScoreDisplayMode.progressBar:
+      return _ProgressBarCell(player: player, isCurrentSeason: isCurrentSeason);
+  }
 }
 
-class _AdminTriggerButtonState extends State<_AdminTriggerButton> {
-  Timer? _timer;
-
-  void _onTapDown(TapDownDetails _) {
-    _timer = Timer(const Duration(seconds: 5), widget.onActivate);
-  }
-
-  void _cancel() {
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+/// A안: 티어 뱃지
+/// 점수 텍스트 + 아래에 티어 뱃지 칩 표시
+class _TierBadgeCell extends StatelessWidget {
+  const _TierBadgeCell({required this.player, required this.isCurrentSeason});
+  final PlayerModel player;
+  final bool isCurrentSeason;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: (_) => _cancel(),
-      onTapCancel: _cancel,
-      child: Container(
-        color: Colors.transparent,
-        width: 50,
-        height: 50,
+    final tier = player.tier;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${player.accumulatedScore}점',
+              style: TextStyle(
+                fontSize: 16.0.responsiveFontSize(context, minFontSize: 12),
+                fontWeight: FontWeight.bold,
+                color: tier?.badgeColor ?? BRColors.black,
+              ),
+            ),
+            if (player.scoreAchieved && isCurrentSeason) ...[
+              const SizedBox(width: 3),
+              const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
+            ],
+          ],
+        ),
+        if (tier != null) ...[
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: tier.badgeColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              tier.name,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10.0.responsiveFontSize(context, minFontSize: 8),
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// D안: 진행 바
+/// 현재점수 / 다음마일스톤 + 구간 내 진행도 바 (1800 이후로도 순환)
+class _ProgressBarCell extends StatelessWidget {
+  const _ProgressBarCell({required this.player, required this.isCurrentSeason});
+  final PlayerModel player;
+  final bool isCurrentSeason;
+
+  @override
+  Widget build(BuildContext context) {
+    final barColor = player.progressBarColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${player.accumulatedScore}',
+                style: TextStyle(
+                  fontSize: 14.0.responsiveFontSize(context, minFontSize: 11),
+                  fontWeight: FontWeight.bold,
+                  color: barColor,
+                ),
+              ),
+              Text(
+                ' / ${player.nextMilestone}',
+                style: TextStyle(
+                  fontSize: 11.0.responsiveFontSize(context, minFontSize: 9),
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              if (player.scoreAchieved && isCurrentSeason) ...[
+                const SizedBox(width: 3),
+                const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Container(
+                    height: 6,
+                    width: constraints.maxWidth,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  Container(
+                    height: 6,
+                    width: constraints.maxWidth * player.milestoneProgress,
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
-/// 휴면 선수 목록 다이얼로그
 class _InactivePlayersDialog extends ConsumerStatefulWidget {
   const _InactivePlayersDialog({required this.onRestored});
   final VoidCallback onRestored;
