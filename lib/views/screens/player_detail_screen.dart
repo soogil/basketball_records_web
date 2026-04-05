@@ -9,6 +9,8 @@ import 'package:iggys_point/presenters/player_detail_presenter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
+import 'package:iggys_point/views/widgets/player_total_score_view.dart';
+import 'package:iggys_point/views/widgets/record_table_row.dart';
 
 enum _ArchiveAction { archive, delete }
 
@@ -168,18 +170,27 @@ class PlayerDetailScreen extends HookConsumerWidget {
   }
 
   Widget _body(BuildContext context, PlayerDetailState state, WidgetRef ref) {
+    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
+    final List<PlayerRecordColumn> columns = selectedSeason >= 2026
+        ? PlayerRecordColumn.currentYearColumns
+        : PlayerRecordColumn.allColumns;
+
     return Column(
       children: [
         Expanded(
           child: CustomScrollView(
             slivers: [
               SliverStickyHeader(
-                header: _buildHeader(context, ref),
+                header: RecordTableHeader(columns: columns),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final record = state.records[index];
-                      return _buildTableRow(context, ref, record, index);
+                      return RecordTableRow(
+                        record: record,
+                        index: index,
+                        columns: columns,
+                      );
                     },
                     childCount: state.records.length,
                   ),
@@ -188,149 +199,8 @@ class PlayerDetailScreen extends HookConsumerWidget {
             ],
           ),
         ),
-        _totalState(context, ref, state.records),
+        PlayerTotalScoreView(records: state.records, columns: columns),
       ],
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
-    final List<PlayerRecordColumn> columns = selectedSeason >= 2026
-        ? PlayerRecordColumn.currentYearColumns
-        : PlayerRecordColumn.allColumns;
-
-    return Row(
-      children: columns.map((col) {
-        return Expanded(
-          flex: col.flex,
-          child: Container(
-            color: BRColors.greenCf,
-            height: 50,
-            child: InkWell(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Text(
-                    col.label,
-                    style: TextStyle(
-                      fontSize: 16.0
-                          .responsiveFontSize(context, minFontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildTableRow(
-    BuildContext context,
-    WidgetRef ref,
-    RecordModel record,
-    int index,
-  ) {
-    final isEven = index.isEven;
-    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
-    final List<PlayerRecordColumn> columns = selectedSeason >= 2026
-        ? PlayerRecordColumn.currentYearColumns
-        : PlayerRecordColumn.allColumns;
-
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      minTileHeight: 50,
-      tileColor: isEven ? BRColors.greyDa : BRColors.whiteE8,
-      title: Row(
-        mainAxisSize: MainAxisSize.max,
-        children: columns
-            .map(
-              (col) => Expanded(
-                flex: col.flex,
-                child: Text(
-                  record.valueByColumn(col),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize:
-                        18.0.responsiveFontSize(context, minFontSize: 15),
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _totalState(
-    BuildContext context,
-    WidgetRef ref,
-    List<RecordModel> records,
-  ) {
-    final int selectedSeason = int.parse(ref.read(selectedSeasonProvider));
-    final List<PlayerRecordColumn> columns = selectedSeason >= 2026
-        ? PlayerRecordColumn.currentYearColumns
-        : PlayerRecordColumn.allColumns;
-
-    final Map<PlayerRecordColumn, num> totals = {};
-    for (final col in PlayerRecordColumn.values) {
-      switch (col) {
-        case PlayerRecordColumn.attendanceScore:
-          totals[col] =
-              records.fold<int>(0, (prev, r) => prev + r.attendanceScore);
-          break;
-        case PlayerRecordColumn.winScore:
-          totals[col] =
-              records.fold<int>(0, (prev, r) => prev + r.winScore);
-          break;
-        case PlayerRecordColumn.winningGames:
-          totals[col] = records.fold<double>(
-              0.0, (prev, r) => prev + r.winningGames);
-          break;
-        case PlayerRecordColumn.totalGames:
-          totals[col] =
-              records.fold<int>(0, (prev, r) => prev + r.totalGames);
-          break;
-        default:
-          totals[col] = 0;
-      }
-    }
-
-    return Container(
-      height: 50,
-      color: BRColors.greenB2,
-      child: Row(
-        children: columns.map((col) {
-          String display = '';
-          if (col == PlayerRecordColumn.date) {
-            display = '합계';
-          } else if (col == PlayerRecordColumn.winningGames) {
-            final num value = totals[col]!;
-            display = value % 1 == 0
-                ? '${value.toInt()}경기'
-                : '${value.toStringAsFixed(1)}경기';
-          } else if (col == PlayerRecordColumn.totalGames) {
-            display = '${totals[col]!}경기';
-          } else if (col == PlayerRecordColumn.winScore) {
-            display = '${totals[col]!}점';
-          } else if (col == PlayerRecordColumn.attendanceScore) {
-            display = '${totals[col]!}점';
-          }
-          return Expanded(
-            flex: col.flex,
-            child: Text(
-              display,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18.0.responsiveFontSize(context, minFontSize: 15),
-                color: Colors.white,
-              ),
-            ),
-          );
-        }).toList(),
-      ),
     );
   }
 }

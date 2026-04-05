@@ -3,9 +3,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:iggys_point/core/utils.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:iggys_point/models/player_model.dart';
 import 'package:iggys_point/presenters/record_add_presenter.dart';
+import 'package:iggys_point/views/widgets/team_input_section.dart';
 
 class RecordAddScreen extends HookConsumerWidget {
   const RecordAddScreen({
@@ -66,8 +66,7 @@ class RecordAddScreen extends HookConsumerWidget {
 
     void addTeam() {
       if (teams.value.length < 3) {
-        final newMeta = TeamMeta();
-        teamMetas.add(newMeta);
+        teamMetas.add(TeamMeta());
         teams.value = [...teams.value, []];
         bindTeamInputListeners(teams.value.length - 1);
       }
@@ -77,7 +76,7 @@ class RecordAddScreen extends HookConsumerWidget {
       final removedPlayers = teams.value[idx].map((e) => e.player);
       availablePlayers.value = [...availablePlayers.value, ...removedPlayers]
         ..sort((a, b) => a.name.compareTo(b.name));
-      
+
       final newTeams = List<List<PlayerGameInput>>.from(teams.value);
       newTeams.removeAt(idx);
       teams.value = newTeams;
@@ -92,7 +91,7 @@ class RecordAddScreen extends HookConsumerWidget {
 
     void movePlayerToTeam(PlayerModel player) {
       if (!availablePlayers.value.contains(player)) return;
-      
+
       final newAvailable = List<PlayerModel>.from(availablePlayers.value);
       newAvailable.remove(player);
       availablePlayers.value = newAvailable;
@@ -104,17 +103,23 @@ class RecordAddScreen extends HookConsumerWidget {
       playerInput.winScoreController.text = meta.scoreController.text;
 
       final newTeams = List<List<PlayerGameInput>>.from(teams.value);
-      newTeams[selectedTeam.value] = [...newTeams[selectedTeam.value], playerInput];
+      newTeams[selectedTeam.value] = [
+        ...newTeams[selectedTeam.value],
+        playerInput
+      ];
       teams.value = newTeams;
     }
 
     void removePlayerFromTeam(PlayerGameInput playerInput, int teamIdx) {
       final newTeams = List<List<PlayerGameInput>>.from(teams.value);
-      newTeams[teamIdx] = List<PlayerGameInput>.from(newTeams[teamIdx])..remove(playerInput);
+      newTeams[teamIdx] =
+          List<PlayerGameInput>.from(newTeams[teamIdx])..remove(playerInput);
       teams.value = newTeams;
 
-      availablePlayers.value = [...availablePlayers.value, playerInput.player]
-        ..sort((a, b) => a.name.compareTo(b.name));
+      availablePlayers.value = [
+        ...availablePlayers.value,
+        playerInput.player
+      ]..sort((a, b) => a.name.compareTo(b.name));
     }
 
     Future<void> showDialogMessage(String message) {
@@ -141,7 +146,8 @@ class RecordAddScreen extends HookConsumerWidget {
               content: Text(
                 message,
                 style: TextStyle(
-                  fontSize: 22.0.responsiveFontSize(context, minFontSize: 16),
+                  fontSize:
+                      22.0.responsiveFontSize(context, minFontSize: 16),
                 ),
               ),
               actions: [
@@ -150,8 +156,8 @@ class RecordAddScreen extends HookConsumerWidget {
                   child: Text(
                     '취소',
                     style: TextStyle(
-                      fontSize:
-                          17.0.responsiveFontSize(context, minFontSize: 11),
+                      fontSize: 17.0
+                          .responsiveFontSize(context, minFontSize: 11),
                     ),
                   ),
                 ),
@@ -160,8 +166,8 @@ class RecordAddScreen extends HookConsumerWidget {
                   child: Text(
                     '확인',
                     style: TextStyle(
-                      fontSize:
-                          17.0.responsiveFontSize(context, minFontSize: 11),
+                      fontSize: 17.0
+                          .responsiveFontSize(context, minFontSize: 11),
                     ),
                   ),
                 ),
@@ -208,7 +214,8 @@ class RecordAddScreen extends HookConsumerWidget {
       if (!success) return;
 
       isExistRecord.value = false;
-      await showDialogMessage('${formattedDate(selectedDate.value)} 기록이 삭제 됐습니다.');
+      await showDialogMessage(
+          '${formattedDate(selectedDate.value)} 기록이 삭제 됐습니다.');
     }
 
     return Scaffold(
@@ -239,11 +246,14 @@ class RecordAddScreen extends HookConsumerWidget {
             child: Row(
               children: [
                 Text(
-                  selectedDate.value == null ? '날짜를 선택 하세요.' : formattedDate(selectedDate.value),
+                  selectedDate.value == null
+                      ? '날짜를 선택 하세요.'
+                      : formattedDate(selectedDate.value),
                   style: const TextStyle(color: BRColors.white, fontSize: 20),
                 ),
                 const SizedBox(width: 5),
-                const Icon(Icons.calendar_today, color: BRColors.white, size: 25),
+                const Icon(Icons.calendar_today,
+                    color: BRColors.white, size: 25),
               ],
             ),
           ),
@@ -255,8 +265,8 @@ class RecordAddScreen extends HookConsumerWidget {
               height: 50,
               width: 200,
               child: ElevatedButton(
-                style:
-                    ElevatedButton.styleFrom(backgroundColor: BRColors.greenCf),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: BRColors.greenCf),
                 onPressed: onRemove,
                 child: Text(
                   '${formattedDate(selectedDate.value)} 기록 삭제',
@@ -278,183 +288,20 @@ class RecordAddScreen extends HookConsumerWidget {
                 children: [
                   for (int i = 0; i < teams.value.length; i++)
                     Expanded(
-                      child: ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                            bottomLeft:
-                                i == 0 ? const Radius.circular(10) : Radius.zero,
-                            topLeft:
-                                i == 0 ? const Radius.circular(10) : Radius.zero,
-                            bottomRight: i == teams.value.length - 1
-                                ? const Radius.circular(10)
-                                : Radius.zero,
-                            topRight: i == teams.value.length - 1
-                                ? const Radius.circular(10)
-                                : Radius.zero,
-                          ),
-                        ),
+                      child: TeamInputSection(
+                        teamIndex: i,
+                        team: teams.value[i],
+                        meta: teamMetas[i],
+                        isFirst: i == 0,
+                        isLast: i == teams.value.length - 1,
+                        isSelected: selectedTeam.value == i,
+                        showDeleteButton:
+                            teams.value.length == 3 && i == 2,
                         onTap: () => selectedTeam.value = i,
-                        tileColor:
-                            selectedTeam.value == i ? BRColors.greenCf : BRColors.greyDa,
-                        title: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text('팀 ${i + 1}',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    const SizedBox(width: 20),
-                                    Flexible(
-                                      child: TextField(
-                                        decoration: const InputDecoration(
-                                            labelText: '경기', isDense: true),
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly
-                                        ],
-                                        controller: teamMetas[i].gamesController,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Flexible(
-                                      child: TextField(
-                                        decoration: const InputDecoration(
-                                            labelText: '승리', isDense: true),
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                                decimal: true),
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.allow(
-                                              RegExp(r'^\d*\.?\d{0,2}$')),
-                                        ],
-                                        controller: teamMetas[i].winsController,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Flexible(
-                                      child: TextField(
-                                        decoration: const InputDecoration(
-                                            labelText: '승점', isDense: true),
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly
-                                        ],
-                                        controller: teamMetas[i].scoreController,
-                                      ),
-                                    ),
-                                    if (teams.value.length == 3 && i == 2)
-                                      InkWell(
-                                        child: Icon(Icons.delete,
-                                            color: BRColors.greenB2),
-                                        onTap: () => removeTeam(i),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.max,
-                                  spacing: 8,
-                                  children: teams.value[i]
-                                      .map((playerInput) => Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(color: Colors.black12),
-                                            ),
-                                            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(playerInput.player.name,
-                                                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                                                const SizedBox(width: 15),
-                                                Flexible(
-                                                  child: DropdownButton<int>(
-                                                    value: playerInput.attendanceScore,
-                                                    isExpanded: true,
-                                                    items: const [
-                                                      DropdownMenuItem(value: 15, child: Text('참석')),
-                                                      DropdownMenuItem(value: 10, child: Text('조퇴')),
-                                                      DropdownMenuItem(value: -5, child: Text('노쇼')),
-                                                    ],
-                                                    onChanged: (v) {
-                                                      if (v != null) {
-                                                        playerInput.attendanceScore = v;
-                                                        if (v == -5) {
-                                                          playerInput.totalGamesController.text = '0';
-                                                          playerInput.winGamesController.text = '0';
-                                                          playerInput.winScoreController.text = '0';
-                                                        } else {
-                                                          final meta = teamMetas[i];
-                                                          playerInput.totalGamesController.text =
-                                                              meta.gamesController.text;
-                                                          playerInput.winGamesController.text =
-                                                              meta.winsController.text;
-                                                          playerInput.winScoreController.text =
-                                                              meta.scoreController.text;
-                                                        }
-                                                        teams.value = [...teams.value];
-                                                      }
-                                                    },
-                                                    style: const TextStyle(fontSize: 14),
-                                                    underline: const SizedBox(),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Flexible(
-                                                  child: TextField(
-                                                    decoration:
-                                                        const InputDecoration(labelText: '경기', isDense: true),
-                                                    keyboardType: TextInputType.number,
-                                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                                    controller: playerInput.totalGamesController,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Flexible(
-                                                  child: TextField(
-                                                    decoration:
-                                                        const InputDecoration(labelText: '승리', isDense: true),
-                                                    keyboardType:
-                                                        const TextInputType.numberWithOptions(decimal: true),
-                                                    inputFormatters: [
-                                                      FilteringTextInputFormatter.allow(
-                                                          RegExp(r'^\d*\.?\d{0,2}$')),
-                                                    ],
-                                                    controller: playerInput.winGamesController,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Flexible(
-                                                  child: TextField(
-                                                    decoration:
-                                                        const InputDecoration(labelText: '승점', isDense: true),
-                                                    keyboardType: TextInputType.number,
-                                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                                    controller: playerInput.winScoreController,
-                                                  ),
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(Icons.close, size: 18),
-                                                  padding: EdgeInsets.zero,
-                                                  onPressed: () => removePlayerFromTeam(playerInput, i),
-                                                ),
-                                              ],
-                                            ),
-                                          ))
-                                      .toList(),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        onRemoveTeam: () => removeTeam(i),
+                        onRemovePlayer: (p) => removePlayerFromTeam(p, i),
+                        onAttendanceChanged: () =>
+                            teams.value = [...teams.value],
                       ),
                     ),
                   if (teams.value.length < 3)
@@ -488,7 +335,8 @@ class RecordAddScreen extends HookConsumerWidget {
               height: 50,
               width: 150,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: BRColors.greenCf),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: BRColors.greenCf),
                 onPressed: onSave,
                 child: const Text(
                   '저장',
