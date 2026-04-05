@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:iggys_point/core/theme/br_color.dart';
 import 'package:iggys_point/core/utils.dart';
 import 'package:iggys_point/models/record_model.dart';
@@ -9,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 
-final _tapCountProvider = StateProvider<int>((ref) => 0);
+enum _ArchiveAction { archive, delete }
+
+final _adminModeProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 class PlayerDetailScreen extends ConsumerWidget {
   const PlayerDetailScreen({
@@ -38,49 +42,53 @@ class PlayerDetailScreen extends ConsumerWidget {
   }
 
   PreferredSizeWidget _appBar(BuildContext context, WidgetRef ref) {
-    final tapCount = ref.watch(_tapCountProvider);
+    final adminMode = ref.watch(_adminModeProvider);
     final isMobile = ref.watch(isMobileProvider(context));
 
     return AppBar(
       toolbarHeight: 70,
       centerTitle: true,
       backgroundColor: BRColors.greenB2,
-      title: GestureDetector(
-        onTap: () {
-          if (!isMobile) {
-            ref.read(_tapCountProvider.notifier).state++;
-          }
-        },
-        child: Text(
-          '$playerName 기록',
-          style: TextStyle(
-            fontSize: 24.0.responsiveFontSize(context, minFontSize: 18),
-            color: BRColors.white,
-          ),
+      title: Text(
+        '$playerName 기록',
+        style: TextStyle(
+          fontSize: 24.0.responsiveFontSize(context, minFontSize: 18),
+          color: BRColors.white,
         ),
       ),
-      actions: tapCount < 7
+      leading: isMobile
+          ? null
+          : _DetailAdminTriggerButton(
+              onActivate: () =>
+                  ref.read(_adminModeProvider.notifier).state = true,
+            ),
+      actions: !adminMode
           ? []
           : [
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.white)),
                 onPressed: () async {
-                  final bool? confirm =
-                      await _showRemovePlayerDialog(context);
+                  final _ArchiveAction? action =
+                      await _showArchivePlayerDialog(context);
 
-                  if (confirm ?? false) {
-                    final presenter = ref.read(
-                        playerDetailPresenterProvider(playerId).notifier);
+                  if (action == null) return;
+
+                  final presenter = ref.read(
+                      playerDetailPresenterProvider(playerId).notifier);
+
+                  if (action == _ArchiveAction.archive) {
+                    await presenter.archivePlayer(playerId);
+                  } else if (action == _ArchiveAction.delete) {
                     await presenter.removePlayer(playerId);
+                  }
 
-                    if (context.mounted) {
-                      Navigator.pop(context, true);
-                    }
+                  if (context.mounted) {
+                    Navigator.pop(context, true);
                   }
                 },
                 child: Text(
-                  '선수 삭제',
+                  '선수 관리',
                   style: TextStyle(
                     fontSize:
                         15.0.responsiveFontSize(context, minFontSize: 12),
@@ -93,15 +101,21 @@ class PlayerDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<bool?> _showRemovePlayerDialog(BuildContext context) {
-    return showDialog<bool>(
+  Future<_ArchiveAction?> _showArchivePlayerDialog(BuildContext context) {
+    return showDialog<_ArchiveAction>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          content: Text(
-            '정말 삭제하시겠습니까?',
+          title: Text(
+            '$playerName 선수 관리',
             style: TextStyle(
               fontSize: 19.0.responsiveFontSize(context, minFontSize: 15),
+            ),
+          ),
+          content: Text(
+            '비활성화하면 명단에서 제외되며\n나중에 복구할 수 있습니다.',
+            style: TextStyle(
+              fontSize: 16.0.responsiveFontSize(context, minFontSize: 13),
             ),
           ),
           actions: [
@@ -116,12 +130,26 @@ class PlayerDetailScreen extends ConsumerWidget {
               ),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () =>
+                  Navigator.of(context).pop(_ArchiveAction.archive),
               child: Text(
-                '확인',
+                '비활성화',
                 style: TextStyle(
                   fontSize:
                       15.0.responsiveFontSize(context, minFontSize: 12),
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(_ArchiveAction.delete),
+              child: Text(
+                '완전 삭제',
+                style: TextStyle(
+                  fontSize:
+                      15.0.responsiveFontSize(context, minFontSize: 12),
+                  color: Colors.red,
                 ),
               ),
             ),
@@ -294,6 +322,50 @@ class PlayerDetailScreen extends ConsumerWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+/// 왼쪽 상단 투명 영역을 5초간 누르면 관리자 모드 활성화
+class _DetailAdminTriggerButton extends StatefulWidget {
+  const _DetailAdminTriggerButton({required this.onActivate});
+  final VoidCallback onActivate;
+
+  @override
+  State<_DetailAdminTriggerButton> createState() =>
+      _DetailAdminTriggerButtonState();
+}
+
+class _DetailAdminTriggerButtonState
+    extends State<_DetailAdminTriggerButton> {
+  Timer? _timer;
+
+  void _onTapDown(TapDownDetails _) {
+    _timer = Timer(const Duration(seconds: 5), widget.onActivate);
+  }
+
+  void _cancel() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: (_) => _cancel(),
+      onTapCancel: _cancel,
+      child: Container(
+        color: Colors.transparent,
+        width: 50,
+        height: 50,
       ),
     );
   }

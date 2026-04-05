@@ -32,4 +32,9 @@ class PlayerDetailPresenter extends _$PlayerDetailPresenter
   Future<void> removePlayer(String playerId) async {
     await _repository.removePlayer(playerId);
   }
+
+  @override
+  Future<void> archivePlayer(String playerId) async {
+    await _repository.archivePlayer(playerId);
+  }
 }

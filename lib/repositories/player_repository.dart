@@ -9,6 +9,9 @@ part 'player_repository.g.dart';
 abstract class PlayerRepository {
   Future<void> addPlayer(String name);
   Future<void> removePlayer(String playerId);
+  Future<void> archivePlayer(String playerId);
+  Future<void> restorePlayer(String playerId);
+  Future<List<PlayerModel>> getInactivePlayers(); // status == 'inactive' 필터
   Future<List<String>> getSeasons();
   Future<List<PlayerModel>> getPlayers();
   Future<List<PlayerModel>> getPlayersFromYear(String year);
@@ -34,6 +37,21 @@ class PlayerRepositoryImpl implements PlayerRepository {
   Future<void> removePlayer(String playerId) => _api.removePlayer(playerId);
 
   @override
+  Future<void> archivePlayer(String playerId) => _api.archivePlayer(playerId);
+
+  @override
+  Future<void> restorePlayer(String playerId) => _api.restorePlayer(playerId);
+
+  @override
+  Future<List<PlayerModel>> getInactivePlayers() async {
+    final snapshot = await _api.getPlayers();
+    return snapshot.docs
+        .map((doc) => PlayerModel.fromFireStore(doc.id, doc.data()))
+        .where((p) => p.status == 'inactive')
+        .toList();
+  }
+
+  @override
   Future<List<String>> getSeasons() => _api.getSeasons();
 
   @override
@@ -41,6 +59,7 @@ class PlayerRepositoryImpl implements PlayerRepository {
     final snapshot = await _api.getPlayers();
     return snapshot.docs
         .map((doc) => PlayerModel.fromFireStore(doc.id, doc.data()))
+        .where((p) => p.status == 'active')
         .toList();
   }
 

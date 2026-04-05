@@ -122,6 +122,7 @@ class FireStoreApi {
       seasonTotalGames: 0,
       seasonTotalWins: 0.0,
       scoreAchieved: false,
+      status: 'active',
     );
 
     batch.set(playerRef, player.toJson());
@@ -134,6 +135,22 @@ class FireStoreApi {
     batch.delete(_firestore.collection('players').doc(playerId));
     batch.delete(_firestore.collection('playerRecords').doc(playerId));
     await batch.commit();
+  }
+
+  /// 선수를 비활성화(휴면) 처리 - status 필드만 업데이트
+  Future<void> archivePlayer(String playerId) async {
+    await _firestore
+        .collection('players')
+        .doc(playerId)
+        .update({'status': 'inactive'});
+  }
+
+  /// 비활성화된 선수를 활성 복구 - status 필드만 업데이트
+  Future<void> restorePlayer(String playerId) async {
+    await _firestore
+        .collection('players')
+        .doc(playerId)
+        .update({'status': 'active'});
   }
 
   /// 선수별 기록을 병렬 조회한 뒤 batch 업데이트로 저장.

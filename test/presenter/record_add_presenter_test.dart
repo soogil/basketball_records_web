@@ -37,6 +37,9 @@ class FakePlayerRepository implements PlayerRepository {
   // 아래는 이번 테스트에서 사용 안 함
   @override Future<void> addPlayer(String name) async {}
   @override Future<void> removePlayer(String playerId) async {}
+  @override Future<void> archivePlayer(String playerId) async {}
+  @override Future<void> restorePlayer(String playerId) async {}
+  @override Future<List<PlayerModel>> getInactivePlayers() async => [];
   @override Future<List<String>> getSeasons() async => [];
   @override Future<List<PlayerModel>> getPlayers() async => [];
   @override Future<List<PlayerModel>> getPlayersFromYear(String year) async => [];

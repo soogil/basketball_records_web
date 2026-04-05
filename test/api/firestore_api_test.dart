@@ -53,6 +53,14 @@ void main() {
       expect((recordDoc.data()!['records'] as List).length, 0);
     });
 
+    test('addPlayer: 생성된 선수 문서에 status가 active로 설정된다', () async {
+      await api.addPlayer('James');
+
+      final playersSnap = await fake.collection('players').get();
+      final data = playersSnap.docs.first.data();
+      expect(data['status'], 'active');
+    });
+
     test('removePlayer: players와 playerRecords가 같이 삭제된다', () async {
       await api.addPlayer('Curry');
 
@@ -66,6 +74,46 @@ void main() {
 
       expect(playerDoc.exists, false);
       expect(recordDoc.exists, false);
+    });
+
+    test('archivePlayer: status가 inactive로 업데이트된다', () async {
+      await api.addPlayer('KD');
+      final playersSnap = await fake.collection('players').get();
+      final playerId = playersSnap.docs.first.id;
+
+      await api.archivePlayer(playerId);
+
+      final playerDoc = await fake.collection('players').doc(playerId).get();
+      expect(playerDoc.data()!['status'], 'inactive');
+      // playerRecords는 삭제되지 않고 유지됨
+      final recordDoc = await fake.collection('playerRecords').doc(playerId).get();
+      expect(recordDoc.exists, true);
+    });
+
+    test('restorePlayer: status가 active로 업데이트된다', () async {
+      await api.addPlayer('Westbrook');
+      final playersSnap = await fake.collection('players').get();
+      final playerId = playersSnap.docs.first.id;
+
+      await api.archivePlayer(playerId);
+      await api.restorePlayer(playerId);
+
+      final playerDoc = await fake.collection('players').doc(playerId).get();
+      expect(playerDoc.data()!['status'], 'active');
+    });
+
+    test('archivePlayer → restorePlayer: 데이터 손실 없이 복구된다', () async {
+      await api.addPlayer('Harden');
+      final playersSnap = await fake.collection('players').get();
+      final playerId = playersSnap.docs.first.id;
+      final original = playersSnap.docs.first.data();
+
+      await api.archivePlayer(playerId);
+      await api.restorePlayer(playerId);
+
+      final restored = await fake.collection('players').doc(playerId).get();
+      expect(restored.data()!['name'], original['name']);
+      expect(restored.data()!['accumulatedScore'], original['accumulatedScore']);
     });
 
     test('hasAnyRealRecordOnDate: 날짜 기록이 전부 0이면 false', () async {

@@ -4,6 +4,8 @@ import 'package:iggys_point/models/player_model.dart';
 abstract class IMainPresenter {
   Future<void> addPlayer(String name);
   void sortPlayersOnTable(PlayerColumn column);
+  Future<List<PlayerModel>> getInactivePlayers();
+  Future<void> restorePlayer(String playerId);
 }
 
 /// Presenter가 MainScreen에게 전달할 상태

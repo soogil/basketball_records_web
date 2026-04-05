@@ -53,6 +53,16 @@ class MainPresenter extends _$MainPresenter implements IMainPresenter {
     await _repository.addPlayer(name);
   }
 
+  @override
+  Future<List<PlayerModel>> getInactivePlayers() async {
+    return _repository.getInactivePlayers();
+  }
+
+  @override
+  Future<void> restorePlayer(String playerId) async {
+    await _repository.restorePlayer(playerId);
+  }
+
   List<PlayerModel> sortPlayers(
     List<PlayerModel> input,
     PlayerColumn column, {

@@ -6,7 +6,7 @@ part of 'main_presenter.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$mainPresenterHash() => r'53b13ff667a2c4d8c11eee42dd3eff4d833fdaf8';
+String _$mainPresenterHash() => r'32876823d8532bf0d0170fb3b82ece387177e19e';
 
 /// See also [MainPresenter].
 @ProviderFor(MainPresenter)

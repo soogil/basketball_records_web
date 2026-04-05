@@ -7,7 +7,7 @@ part of 'player_detail_presenter.dart';
 // **************************************************************************
 
 String _$playerDetailPresenterHash() =>
-    r'c1799e4e56f7fae346d055091fe7415099f71ea1';
+    r'2fd433a367e59e0dd8c22d72d6797a7bdfdb8a25';
 
 /// Copied from Dart SDK
 class _SystemHash {
