@@ -128,7 +128,7 @@ class _ProgressBarCell extends StatelessWidget {
                     height: 6,
                     width: constraints.maxWidth,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
+                      color: Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),

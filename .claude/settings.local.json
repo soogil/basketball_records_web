@@ -10,7 +10,8 @@
       "Bash(firebase --version)",
       "Bash(firebase deploy:*)",
       "Bash(npm install:*)",
-      "Bash(node archive_inactive_players.js)"
+      "Bash(node archive_inactive_players.js)",
+      "Bash(flutter analyze:*)"
     ]
   }
 }
